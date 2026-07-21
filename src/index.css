@@ -1,5 +1,62 @@
 @import 'tailwindcss';
 
+/*
+  Playful party-game theme.
+  Brand + accent are fixed scales. The "semantic" tokens (surface, content, line)
+  point at CSS variables that flip in dark mode, so utilities like `bg-surface`
+  and `text-content` adapt to the phone's light/dark setting automatically.
+*/
+@theme {
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --color-brand-200: #ddd6fe;
+  --color-brand-300: #c4b5fd;
+  --color-brand-400: #a78bfa;
+  --color-brand-500: #8b5cf6;
+  --color-brand-600: #7c3aed;
+  --color-brand-700: #6d28d9;
+  --color-brand-800: #5b21b6;
+  --color-brand-900: #4c1d95;
+
+  --color-accent-400: #fb7185;
+  --color-accent-500: #f43f5e;
+  --color-accent-600: #e11d48;
+
+  --color-sunny-400: #fbbf24;
+  --color-sunny-500: #f59e0b;
+
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-content: var(--content);
+  --color-content-muted: var(--content-muted);
+  --color-line: var(--line);
+
+  --font-sans:
+    ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, 'Noto Sans Hebrew',
+    'Arial Hebrew', sans-serif;
+
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+}
+
+:root {
+  --surface: #f7f3ff;
+  --surface-raised: #ffffff;
+  --content: #1e1b2e;
+  --content-muted: #6b6480;
+  --line: #e9e3f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #14121c;
+    --surface-raised: #211d2e;
+    --content: #f4f1fa;
+    --content-muted: #a79fbd;
+    --line: #332d44;
+  }
+}
+
 html,
 body,
 #root {
@@ -8,5 +65,14 @@ body,
 
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--surface);
+  color: var(--content);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Let buttons show the pointer cursor everywhere. */
+button:not(:disabled) {
+  cursor: pointer;
 }

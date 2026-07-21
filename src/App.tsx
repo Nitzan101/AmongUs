@@ -1,14 +1,24 @@
-function App() {
-  return (
-    <div className="flex min-h-full flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center">
-      <div className="text-6xl">🕵️</div>
-      <h1 className="text-3xl font-bold text-slate-800">Imposter</h1>
-      <p className="text-slate-500">Milestone 0 — the app is alive.</p>
-      <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">
-        Tailwind is working
-      </span>
-    </div>
-  )
-}
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { Layout } from './components/Layout'
+import { HomePage } from './pages/HomePage'
+import { CreateGamePage } from './pages/CreateGamePage'
+import { JoinGamePage } from './pages/JoinGamePage'
+import { LobbyPage } from './pages/LobbyPage'
+import { RulesPage } from './pages/RulesPage'
 
-export default App
+const router = createBrowserRouter([
+  {
+    element: <Layout />,
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/create', element: <CreateGamePage /> },
+      { path: '/join', element: <JoinGamePage /> },
+      { path: '/lobby', element: <LobbyPage /> },
+      { path: '/rules', element: <RulesPage /> },
+    ],
+  },
+])
+
+export default function App() {
+  return <RouterProvider router={router} />
+}

@@ -1,0 +1,81 @@
+{
+  "common": {
+    "appName": "Imposter",
+    "back": "Back",
+    "next": "Next",
+    "cancel": "Cancel",
+    "language": "Language",
+    "english": "English",
+    "hebrew": "עברית",
+    "comingSoon": "Coming soon"
+  },
+  "home": {
+    "tagline": "Find the imposter. Or be the imposter.",
+    "createGame": "Create a game",
+    "joinGame": "Join a game",
+    "howToPlay": "How to play",
+    "signIn": "Sign in",
+    "signInHint": "Sign in to host your own games. Joining never needs an account."
+  },
+  "create": {
+    "title": "Create a game",
+    "subtitle": "Set it up how you like, then invite your friends.",
+    "mode": "Game mode",
+    "modeHalf": "In person",
+    "modeHalfDesc": "You say the words out loud. The app handles the secret words, turns, voting and scores.",
+    "modeFull": "Fully online",
+    "modeFullDesc": "Everyone types their words in the app and sees the list. Great for playing apart.",
+    "difficulty": "Difficulty",
+    "difficultyNormal": "Normal",
+    "difficultyNormalDesc": "The imposter's word is related to the real word.",
+    "difficultyHard": "Hard",
+    "difficultyHardDesc": "The imposter's word is completely unrelated.",
+    "scoring": "Scoring",
+    "scoringTeamRace": "Team Race",
+    "scoringTeamRaceDesc": "The whole crew scores by how fast they catch the imposter.",
+    "scoringSurvivors": "Survivors",
+    "scoringSurvivorsDesc": "Only crew still in the game when the imposter is caught score.",
+    "scoringDetective": "Detective",
+    "scoringDetectiveDesc": "Team Race, plus a bonus for voting the imposter yourself.",
+    "guess": "If the imposter is caught",
+    "guessFinal": "Final Guess",
+    "guessFinalDesc": "The caught imposter may guess the word for a few points.",
+    "guessSteal": "Steal the Win",
+    "guessStealDesc": "A correct guess snatches the win from the crew!",
+    "guessOff": "No guess",
+    "guessOffDesc": "Caught is caught. The crew wins.",
+    "submit": "Create game"
+  },
+  "join": {
+    "title": "Join a game",
+    "subtitle": "Ask the host for the game PIN.",
+    "pinLabel": "Game PIN",
+    "nicknameLabel": "Your nickname",
+    "nicknamePlaceholder": "e.g. Dana",
+    "pickCharacter": "Pick your character",
+    "submit": "Join"
+  },
+  "lobby": {
+    "title": "Game lobby",
+    "pinLabel": "Game PIN",
+    "shareLink": "Share link",
+    "players": "Players",
+    "waiting": "Waiting for players to join…",
+    "startGame": "Start game",
+    "hostNote": "The host starts the game once everyone is in."
+  },
+  "rules": {
+    "title": "How to play",
+    "step1Title": "Everyone gets a word",
+    "step1Body": "All players secretly get the same word — except one random imposter, who gets a different word.",
+    "step2Title": "Give a clue",
+    "step2Body": "In turn, each player says one word connected to their word. Don't say a word from the root of the real word!",
+    "step3Title": "Spot the imposter",
+    "step3Body": "The imposter doesn't know the real word and is trying to blend in. Watch for a clue that feels off.",
+    "step4Title": "Vote",
+    "step4Body": "Everyone votes in secret, then all votes are revealed. The most-voted player is out and their role shown.",
+    "step5Title": "Win",
+    "step5Body": "The crew wins by catching the imposter. The imposter wins by surviving. Scores add up across games.",
+    "gotIt": "Got it!"
+  }
+}
