@@ -29,4 +29,5 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 0 complete** (scaffold + tooling).
+Currently: **Milestone 1 complete** — navigable screen skeleton, playful light/dark
+design system, and full English/Hebrew switching with right-to-left support.
