@@ -29,7 +29,7 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 3 complete** — a bilingual word bank (48 entries per language, each with
-easy/medium confusing variants + category) and three imposter-difficulty tiers (easy near-twin /
-medium same-category / hard unrelated), with a `/words` review screen. On top of Firebase auth
-(M2) and the localized screen skeleton (M1).
+Currently: **Milestone 3 complete** — a bilingual word bank (~131 words per language, organized as
+categories → clusters) with three imposter-difficulty tiers generated live (easy = same cluster /
+medium = same category / hard = unrelated), so there's no fixed mapping to memorize. Includes a
+`/words` review screen. On top of Firebase auth (M2) and the localized screen skeleton (M1).

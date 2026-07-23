@@ -1,18 +1,26 @@
 import type { Language } from '../i18n'
-import { EN_WORDS } from './en'
-import { HE_WORDS } from './he'
-import type { Difficulty, WordEntry } from './types'
+import { EN_CATEGORIES } from './en'
+import { HE_CATEGORIES } from './he'
+import type { Category, Difficulty } from './types'
 
-export type { WordEntry, Difficulty }
+export type { Category, Difficulty }
 
-const BANKS: Record<Language, WordEntry[]> = {
-  en: EN_WORDS,
-  he: HE_WORDS,
+const BANKS: Record<Language, Category[]> = {
+  en: EN_CATEGORIES,
+  he: HE_CATEGORIES,
 }
 
-/** All entries for a language (falls back to English for anything unexpected). */
-export function getWords(language: Language): WordEntry[] {
+/** All categories for a language (falls back to English for anything unexpected). */
+export function getCategories(language: Language): Category[] {
   return BANKS[language] ?? BANKS.en
+}
+
+/** Total number of words in a language's bank. */
+export function countWords(language: Language): number {
+  return getCategories(language).reduce(
+    (sum, cat) => sum + cat.clusters.reduce((s, c) => s + c.length, 0),
+    0,
+  )
 }
 
 /** The words a single game hands out. */
@@ -26,27 +34,34 @@ function randomItem<T>(items: T[]): T {
 }
 
 /**
- * Choose the main word (crew) and the confusing word (imposter):
- * - easy:   the near-twin variant.
- * - medium: the same-category-but-distinct variant.
- * - hard:   the main word of a different-category entry (genuinely unrelated).
+ * Choose the main word (crew) and the confusing word (imposter). The confusing
+ * word is drawn live by distance so nothing is a fixed, memorizable mapping:
+ * - easy:   another word from the same cluster.
+ * - medium: a word from a different cluster in the same category.
+ * - hard:   a word from a different category.
  */
 export function pickWords(
   language: Language,
   difficulty: Difficulty,
 ): WordAssignment {
-  const words = getWords(language)
-  const entry = randomItem(words)
+  const categories = getCategories(language)
+  const category = randomItem(categories)
+  const cluster = randomItem(category.clusters)
+  const main = randomItem(cluster)
 
+  let pool: string[]
   if (difficulty === 'easy') {
-    return { main: entry.main, confusing: entry.easy }
-  }
-  if (difficulty === 'medium') {
-    return { main: entry.main, confusing: entry.medium }
+    pool = cluster.filter((w) => w !== main)
+  } else if (difficulty === 'medium') {
+    pool = category.clusters.filter((c) => c !== cluster).flat()
+  } else {
+    pool = categories.filter((c) => c !== category).flatMap((c) => c.clusters.flat())
   }
 
-  // hard: borrow an unrelated word from a different category.
-  const others = words.filter((w) => w.category !== entry.category)
-  const pool = others.length > 0 ? others : words.filter((w) => w !== entry)
-  return { main: entry.main, confusing: randomItem(pool).main }
+  // Fallbacks keep selection safe even if a bank ever violates the invariants.
+  if (pool.length === 0) {
+    pool = categories.flatMap((c) => c.clusters.flat()).filter((w) => w !== main)
+  }
+
+  return { main, confusing: randomItem(pool) }
 }

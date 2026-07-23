@@ -67,10 +67,11 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 
 ## 5. Word sets
 
-- **Built-in bank:** authored word entries per language (separate EN and HE lists, authored per
-  language — not translated). Each entry has a real word, an *easy* near-twin, a *medium*
-  same-category-but-distinct word, and a category tag. Hard mode borrows the real word of a
-  different-category entry (no extra authoring). Currently 48 entries per language; expandable.
+- **Built-in bank:** authored per language (separate EN and HE lists — not translated), organized
+  as **categories → clusters → words** (words in one cluster are near-twins). The confusing word is
+  generated **live by distance** — easy = same cluster, medium = different cluster/same category,
+  hard = different category — so there is **no fixed word→word mapping to memorize** and every word
+  can play any role. Currently ~131 words per language across 8 categories; expandable.
 - **Custom sets** (account holders): creator writes the **main words**; next to each they may
   optionally fill a **confusing word**, or leave it blank to be auto-filled from the same set.
   Example: "Mom's Birthday" themed around the creator's mother.
