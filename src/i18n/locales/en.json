@@ -107,5 +107,15 @@
       "network": "Network problem. Check your connection and try again.",
       "generic": "Something went wrong. Please try again."
     }
+  },
+  "words": {
+    "title": "Word bank",
+    "count": "{{count}} pairs in this language",
+    "main": "Main word",
+    "confusing": "Confusing word",
+    "normalExample": "🎲 Normal example",
+    "hardExample": "🎲 Hard example",
+    "crewGets": "Crew gets",
+    "imposterGets": "Imposter gets"
   }
 }

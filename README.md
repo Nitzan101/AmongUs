@@ -29,6 +29,6 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 2 complete** — Firebase authentication is wired up, with working
-Google, email/password, and anonymous (guest) sign-in, on top of the Milestone 1 skeleton
-(navigable screens, playful light/dark design, English/Hebrew with right-to-left).
+Currently: **Milestone 3 complete** — a bilingual word bank (81 related pairs per language)
+with normal/hard difficulty selection and a `/words` review screen, on top of Firebase
+auth (M2) and the localized screen skeleton (M1).
