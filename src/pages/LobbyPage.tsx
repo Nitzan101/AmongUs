@@ -1,15 +1,83 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { useAuth } from '../auth/AuthContext'
+import { useGame } from '../game/useGame'
+import { kickPlayer, leaveGame, startGame } from '../game/gameService'
 
-// Placeholder players — real ones arrive over Firebase in a later milestone.
-const MOCK_PLAYERS = [
-  { id: '1', name: 'Dana', character: '🦊', host: true },
-  { id: '2', name: 'Yossi', character: '🐼', host: false },
-  { id: '3', name: 'Maya', character: '🦄', host: false },
-]
+const MIN_PLAYERS = 4
 
 export function LobbyPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { pin = '' } = useParams()
+  const { user } = useAuth()
+  const { game, players, loading } = useGame(pin)
+  const [copied, setCopied] = useState(false)
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="animate-pulse text-content-muted">{t('lobby.loading')}</div>
+      </div>
+    )
+  }
+
+  if (!game) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="text-6xl">🕳️</div>
+        <h1 className="text-2xl font-black text-content">{t('lobby.notFound')}</h1>
+        <Button onClick={() => navigate('/join')}>{t('home.joinGame')}</Button>
+      </div>
+    )
+  }
+
+  const isHost = game.hostId === user?.uid
+  const me = players.find((p) => p.id === user?.uid)
+
+  if (game.status === 'playing') {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="text-6xl">🎬</div>
+        <h1 className="text-2xl font-black text-content">{t('lobby.starting')}</h1>
+        <p className="max-w-xs text-content-muted">{t('lobby.startingSoon')}</p>
+      </div>
+    )
+  }
+
+  if (!me) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="text-6xl">👋</div>
+        <h1 className="text-2xl font-black text-content">{t('lobby.notInGame')}</h1>
+        <Button onClick={() => navigate(`/join/${pin}`)}>{t('join.submit')}</Button>
+      </div>
+    )
+  }
+
+  const shareLink = `${window.location.origin}/join/${pin}`
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard may be unavailable; the PIN is still shown */
+    }
+  }
+
+  async function handleLeave() {
+    if (user) await leaveGame(pin, user.uid)
+    navigate('/')
+  }
+
+  // Sort so the host shows first, then by join order isn't tracked — keep stable by name.
+  const sorted = [...players].sort((a, b) =>
+    a.isHost === b.isHost ? a.name.localeCompare(b.name) : a.isHost ? -1 : 1,
+  )
 
   return (
     <div className="flex flex-1 flex-col">
@@ -21,10 +89,12 @@ export function LobbyPage() {
             {t('lobby.pinLabel')}
           </div>
           <div className="text-3xl font-black tracking-[0.3em] text-brand-600">
-            428913
+            {pin}
           </div>
         </div>
-        <Button variant="secondary">🔗 {t('lobby.shareLink')}</Button>
+        <Button variant="secondary" onClick={copyLink}>
+          {copied ? `✓ ${t('lobby.copied')}` : `🔗 ${t('lobby.shareLink')}`}
+        </Button>
       </div>
 
       <div className="mt-6 flex items-center justify-between px-1">
@@ -32,36 +102,68 @@ export function LobbyPage() {
           {t('lobby.players')}
         </h2>
         <span className="text-sm font-bold text-content-muted">
-          {MOCK_PLAYERS.length}
+          {players.length}
         </span>
       </div>
 
       <ul className="mt-2 flex flex-col gap-2">
-        {MOCK_PLAYERS.map((p) => (
+        {sorted.map((p) => (
           <li
             key={p.id}
             className="flex items-center gap-3 rounded-2xl border border-line bg-surface-raised p-3"
           >
             <span className="text-3xl">{p.character}</span>
-            <span className="flex-1 font-bold text-content">{p.name}</span>
-            {p.host && (
+            <span className="flex-1 font-bold text-content">
+              {p.name}
+              {p.id === user?.uid && (
+                <span className="ms-1 text-sm font-normal text-content-muted">
+                  ({t('lobby.you')})
+                </span>
+              )}
+            </span>
+            {p.isHost && (
               <span className="rounded-full bg-sunny-400/20 px-2 py-0.5 text-xs font-bold text-sunny-500">
-                HOST
+                {t('lobby.host')}
               </span>
+            )}
+            {isHost && !p.isHost && (
+              <button
+                type="button"
+                onClick={() => kickPlayer(pin, p.id)}
+                className="rounded-full px-2 py-0.5 text-sm text-accent-500 hover:bg-accent-500/10"
+                aria-label={t('lobby.kick')}
+              >
+                ✕
+              </button>
             )}
           </li>
         ))}
-        <li className="rounded-2xl border-2 border-dashed border-line p-3 text-center text-sm text-content-muted">
-          {t('lobby.waiting')}
-        </li>
       </ul>
 
       <div className="mt-auto pt-8">
-        <p className="mb-2 text-center text-sm text-content-muted">
-          {t('lobby.hostNote')}
-        </p>
-        <Button size="lg" fullWidth>
-          {t('lobby.startGame')}
+        {isHost ? (
+          <>
+            {players.length < MIN_PLAYERS && (
+              <p className="mb-2 text-center text-sm text-content-muted">
+                {t('lobby.needMore', { count: MIN_PLAYERS })}
+              </p>
+            )}
+            <Button
+              size="lg"
+              fullWidth
+              disabled={players.length < MIN_PLAYERS}
+              onClick={() => startGame(pin)}
+            >
+              {t('lobby.startGame')}
+            </Button>
+          </>
+        ) : (
+          <p className="mb-2 text-center text-sm text-content-muted">
+            {t('lobby.hostNote')}
+          </p>
+        )}
+        <Button variant="ghost" fullWidth className="mt-2" onClick={handleLeave}>
+          {t('lobby.leave')}
         </Button>
       </div>
     </div>

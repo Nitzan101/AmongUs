@@ -1,19 +1,50 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { CHARACTERS } from '../game/characters'
+import { GameError, joinGame } from '../game/gameService'
 
-const CHARACTERS = ['🦊', '🐼', '🐸', '🦄', '🐙', '🐧', '🦁', '🐨', '🐵', '🦉']
+function errorKey(err: unknown): string {
+  const code = err instanceof GameError ? err.code : ''
+  switch (code) {
+    case 'game-not-found':
+      return 'join.errors.notFound'
+    case 'game-started':
+      return 'join.errors.started'
+    case 'name-taken':
+      return 'join.errors.nameTaken'
+    case 'not-configured':
+      return 'join.errors.notConfigured'
+    default:
+      return 'join.errors.generic'
+  }
+}
 
 export function JoinGamePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const params = useParams()
 
-  const [pin, setPin] = useState('')
+  const [pin, setPin] = useState(params.pin ?? '')
   const [nickname, setNickname] = useState('')
-  const [character, setCharacter] = useState(CHARACTERS[0])
+  const [character, setCharacter] = useState<string>(CHARACTERS[0])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const canJoin = pin.trim().length > 0 && nickname.trim().length > 0
+  const canJoin = pin.trim().length === 6 && nickname.trim().length > 0
+
+  async function handleJoin() {
+    setError(null)
+    setBusy(true)
+    try {
+      await joinGame(pin.trim(), nickname, character)
+      navigate(`/lobby/${pin.trim()}`)
+    } catch (err) {
+      setError(t(errorKey(err)))
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -69,14 +100,20 @@ export function JoinGamePage() {
         </div>
       </div>
 
+      {error && (
+        <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
+          {error}
+        </p>
+      )}
+
       <div className="mt-auto pt-8">
         <Button
           size="lg"
           fullWidth
-          disabled={!canJoin}
-          onClick={() => navigate('/lobby')}
+          disabled={!canJoin || busy}
+          onClick={handleJoin}
         >
-          {t('join.submit')}
+          {busy ? t('join.joining') : t('join.submit')}
         </Button>
       </div>
     </div>

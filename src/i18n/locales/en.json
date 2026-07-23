@@ -46,7 +46,11 @@
     "guessStealDesc": "A correct guess snatches the win from the crew!",
     "guessOff": "No guess",
     "guessOffDesc": "Caught is caught. The crew wins.",
-    "submit": "Create game"
+    "submit": "Create game",
+    "creating": "Creating…",
+    "createError": "Could not create the game. Please try again.",
+    "needAccountTitle": "Sign in to host",
+    "needAccountBody": "Creating a game needs a free account. Joining a game never does."
   },
   "join": {
     "title": "Join a game",
@@ -55,16 +59,35 @@
     "nicknameLabel": "Your nickname",
     "nicknamePlaceholder": "e.g. Dana",
     "pickCharacter": "Pick your character",
-    "submit": "Join"
+    "submit": "Join",
+    "joining": "Joining…",
+    "errors": {
+      "notFound": "No game found with that PIN.",
+      "started": "That game has already started.",
+      "nameTaken": "That nickname is taken — pick another.",
+      "notConfigured": "Not connected yet. (Firebase setup in progress.)",
+      "generic": "Could not join. Please try again."
+    }
   },
   "lobby": {
     "title": "Game lobby",
+    "loading": "Loading…",
+    "notFound": "This game doesn't exist.",
+    "notInGame": "You're not in this game.",
+    "starting": "The game is starting!",
+    "startingSoon": "The game screen arrives in the next milestone.",
     "pinLabel": "Game PIN",
     "shareLink": "Share link",
+    "copied": "Copied",
     "players": "Players",
+    "you": "you",
+    "host": "HOST",
+    "kick": "Remove player",
     "waiting": "Waiting for players to join…",
+    "needMore": "Need at least {{count}} players to start.",
     "startGame": "Start game",
-    "hostNote": "The host starts the game once everyone is in."
+    "hostNote": "The host starts the game once everyone is in.",
+    "leave": "Leave game"
   },
   "rules": {
     "title": "How to play",

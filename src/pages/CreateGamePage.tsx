@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { OptionCard } from '../components/ui/Card'
-
-type Mode = 'half' | 'full'
-type Difficulty = 'easy' | 'medium' | 'hard'
-type Scoring = 'teamRace' | 'survivors' | 'detective'
-type Guess = 'final' | 'steal' | 'off'
+import { useAuth } from '../auth/AuthContext'
+import { createGame } from '../game/gameService'
+import { randomCharacter } from '../game/characters'
+import type { GameMode, GuessRule, Scoring } from '../game/types'
+import type { Difficulty } from '../words'
+import type { Language } from '../i18n'
 
 function Section({
   title,
@@ -27,13 +28,59 @@ function Section({
 }
 
 export function CreateGamePage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
-  const [mode, setMode] = useState<Mode>('half')
+  const [mode, setMode] = useState<GameMode>('half')
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [scoring, setScoring] = useState<Scoring>('teamRace')
-  const [guess, setGuess] = useState<Guess>('final')
+  const [guess, setGuess] = useState<GuessRule>('final')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Hosting requires a real (non-guest) account.
+  if (!user || user.isAnonymous) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="text-6xl">🔑</div>
+        <h1 className="text-2xl font-black text-content">
+          {t('create.needAccountTitle')}
+        </h1>
+        <p className="max-w-xs text-content-muted">
+          {t('create.needAccountBody')}
+        </p>
+        <Button size="lg" onClick={() => navigate('/signin')}>
+          {t('home.signIn')}
+        </Button>
+      </div>
+    )
+  }
+
+  async function handleCreate() {
+    setError(null)
+    setBusy(true)
+    try {
+      const pin = await createGame(
+        {
+          language: (i18n.resolvedLanguage ?? 'en') as Language,
+          mode,
+          difficulty,
+          scoring,
+          guess,
+        },
+        {
+          uid: user!.uid,
+          name: user!.displayName || user!.email?.split('@')[0] || 'Host',
+          character: randomCharacter(),
+        },
+      )
+      navigate(`/lobby/${pin}`)
+    } catch {
+      setError(t('create.createError'))
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col pb-4">
@@ -129,9 +176,15 @@ export function CreateGamePage() {
         />
       </Section>
 
+      {error && (
+        <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
+          {error}
+        </p>
+      )}
+
       <div className="mt-8">
-        <Button size="lg" fullWidth onClick={() => navigate('/lobby')}>
-          {t('create.submit')}
+        <Button size="lg" fullWidth disabled={busy} onClick={handleCreate}>
+          {busy ? t('create.creating') : t('create.submit')}
         </Button>
       </div>
     </div>
