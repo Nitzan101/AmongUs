@@ -1,107 +1,71 @@
-import type { WordPair } from './types'
+import type { WordEntry } from './types'
 
 /**
- * English word bank. Each pair is "close but not the same": the confusing word
- * is related enough that the imposter can bluff a clue, but different enough
- * that a careful crew clue can expose the mismatch. Grouped by theme for review.
+ * English word bank. Each entry: the real word, a near-twin (easy), a
+ * same-category-but-distinct word (medium), and a category for hard mode.
  */
-export const EN_PAIRS: WordPair[] = [
+export const EN_WORDS: WordEntry[] = [
   // Food & drink
-  { main: 'Pizza', confusing: 'Hamburger' },
-  { main: 'Coffee', confusing: 'Tea' },
-  { main: 'Sushi', confusing: 'Salad' },
-  { main: 'Cake', confusing: 'Cookie' },
-  { main: 'Ice cream', confusing: 'Milkshake' },
-  { main: 'Bread', confusing: 'Rice' },
-  { main: 'Apple', confusing: 'Orange' },
-  { main: 'Chocolate', confusing: 'Candy' },
-  { main: 'Soup', confusing: 'Stew' },
-  { main: 'Wine', confusing: 'Beer' },
-  { main: 'Pancake', confusing: 'Waffle' },
-  { main: 'Cheese', confusing: 'Butter' },
+  { main: 'Pizza', easy: 'Hamburger', medium: 'Sushi', category: 'food' },
+  { main: 'Coffee', easy: 'Tea', medium: 'Beer', category: 'food' },
+  { main: 'Cake', easy: 'Cookie', medium: 'Bread', category: 'food' },
+  { main: 'Apple', easy: 'Orange', medium: 'Watermelon', category: 'food' },
+  { main: 'Soup', easy: 'Stew', medium: 'Salad', category: 'food' },
+  { main: 'Ice cream', easy: 'Milkshake', medium: 'French fries', category: 'food' },
 
   // Animals
-  { main: 'Lion', confusing: 'Tiger' },
-  { main: 'Dog', confusing: 'Cat' },
-  { main: 'Shark', confusing: 'Whale' },
-  { main: 'Eagle', confusing: 'Owl' },
-  { main: 'Rabbit', confusing: 'Squirrel' },
-  { main: 'Bee', confusing: 'Butterfly' },
-  { main: 'Horse', confusing: 'Donkey' },
-  { main: 'Frog', confusing: 'Lizard' },
-  { main: 'Dolphin', confusing: 'Seal' },
-  { main: 'Snake', confusing: 'Worm' },
-  { main: 'Bear', confusing: 'Wolf' },
-  { main: 'Elephant', confusing: 'Rhino' },
+  { main: 'Lion', easy: 'Tiger', medium: 'Elephant', category: 'animal' },
+  { main: 'Dog', easy: 'Cat', medium: 'Fish', category: 'animal' },
+  { main: 'Shark', easy: 'Whale', medium: 'Crab', category: 'animal' },
+  { main: 'Eagle', easy: 'Owl', medium: 'Penguin', category: 'animal' },
+  { main: 'Horse', easy: 'Donkey', medium: 'Cow', category: 'animal' },
+  { main: 'Snake', easy: 'Worm', medium: 'Frog', category: 'animal' },
 
   // Places
-  { main: 'Beach', confusing: 'Swimming pool' },
-  { main: 'Mountain', confusing: 'Hill' },
-  { main: 'Forest', confusing: 'Jungle' },
-  { main: 'City', confusing: 'Village' },
-  { main: 'Hospital', confusing: 'Clinic' },
-  { main: 'School', confusing: 'University' },
-  { main: 'Library', confusing: 'Bookstore' },
-  { main: 'Airport', confusing: 'Train station' },
-  { main: 'Restaurant', confusing: 'Cafe' },
-  { main: 'Desert', confusing: 'Savanna' },
+  { main: 'Beach', easy: 'Swimming pool', medium: 'Mountain', category: 'place' },
+  { main: 'Forest', easy: 'Jungle', medium: 'Desert', category: 'place' },
+  { main: 'Hospital', easy: 'Clinic', medium: 'School', category: 'place' },
+  { main: 'Restaurant', easy: 'Cafe', medium: 'Library', category: 'place' },
+  { main: 'Castle', easy: 'Palace', medium: 'Cave', category: 'place' },
+  { main: 'Museum', easy: 'Gallery', medium: 'Stadium', category: 'place' },
 
-  // Sports & activities
-  { main: 'Soccer', confusing: 'Basketball' },
-  { main: 'Tennis', confusing: 'Ping pong' },
-  { main: 'Swimming', confusing: 'Diving' },
-  { main: 'Running', confusing: 'Cycling' },
-  { main: 'Boxing', confusing: 'Wrestling' },
-  { main: 'Skiing', confusing: 'Ice skating' },
-  { main: 'Chess', confusing: 'Checkers' },
-  { main: 'Yoga', confusing: 'Pilates' },
-  { main: 'Golf', confusing: 'Bowling' },
+  // Sports & games
+  { main: 'Soccer', easy: 'Basketball', medium: 'Swimming', category: 'sport' },
+  { main: 'Tennis', easy: 'Ping pong', medium: 'Boxing', category: 'sport' },
+  { main: 'Skiing', easy: 'Ice skating', medium: 'Surfing', category: 'sport' },
+  { main: 'Running', easy: 'Cycling', medium: 'Weightlifting', category: 'sport' },
+  { main: 'Golf', easy: 'Bowling', medium: 'Archery', category: 'sport' },
+  { main: 'Baseball', easy: 'Cricket', medium: 'Volleyball', category: 'sport' },
 
   // Objects
-  { main: 'Guitar', confusing: 'Violin' },
-  { main: 'Piano', confusing: 'Drums' },
-  { main: 'Phone', confusing: 'Tablet' },
-  { main: 'Clock', confusing: 'Watch' },
-  { main: 'Umbrella', confusing: 'Raincoat' },
-  { main: 'Pencil', confusing: 'Pen' },
-  { main: 'Chair', confusing: 'Sofa' },
-  { main: 'Knife', confusing: 'Fork' },
-  { main: 'Camera', confusing: 'Binoculars' },
-  { main: 'Candle', confusing: 'Lamp' },
+  { main: 'Guitar', easy: 'Violin', medium: 'Drums', category: 'object' },
+  { main: 'Phone', easy: 'Tablet', medium: 'Camera', category: 'object' },
+  { main: 'Clock', easy: 'Watch', medium: 'Calendar', category: 'object' },
+  { main: 'Umbrella', easy: 'Raincoat', medium: 'Sunglasses', category: 'object' },
+  { main: 'Chair', easy: 'Sofa', medium: 'Bed', category: 'object' },
+  { main: 'Knife', easy: 'Fork', medium: 'Scissors', category: 'object' },
 
   // Nature & weather
-  { main: 'Rain', confusing: 'Snow' },
-  { main: 'Sun', confusing: 'Moon' },
-  { main: 'River', confusing: 'Lake' },
-  { main: 'Star', confusing: 'Planet' },
-  { main: 'Wind', confusing: 'Storm' },
-  { main: 'Rose', confusing: 'Tulip' },
-  { main: 'Oak', confusing: 'Pine' },
-  { main: 'Fire', confusing: 'Smoke' },
-  { main: 'Cloud', confusing: 'Fog' },
-  { main: 'Volcano', confusing: 'Earthquake' },
+  { main: 'Rain', easy: 'Snow', medium: 'Wind', category: 'nature' },
+  { main: 'Sun', easy: 'Moon', medium: 'Cloud', category: 'nature' },
+  { main: 'River', easy: 'Lake', medium: 'Ocean', category: 'nature' },
+  { main: 'Rose', easy: 'Tulip', medium: 'Cactus', category: 'nature' },
+  { main: 'Fire', easy: 'Smoke', medium: 'Ice', category: 'nature' },
+  { main: 'Star', easy: 'Planet', medium: 'Comet', category: 'nature' },
 
   // Transport
-  { main: 'Airplane', confusing: 'Train' },
-  { main: 'Car', confusing: 'Bus' },
-  { main: 'Bicycle', confusing: 'Motorcycle' },
-  { main: 'Ship', confusing: 'Boat' },
-  { main: 'Helicopter', confusing: 'Rocket' },
-  { main: 'Truck', confusing: 'Van' },
+  { main: 'Car', easy: 'Bus', medium: 'Airplane', category: 'transport' },
+  { main: 'Bicycle', easy: 'Motorcycle', medium: 'Skateboard', category: 'transport' },
+  { main: 'Ship', easy: 'Boat', medium: 'Submarine', category: 'transport' },
+  { main: 'Train', easy: 'Subway', medium: 'Helicopter', category: 'transport' },
+  { main: 'Truck', easy: 'Van', medium: 'Tractor', category: 'transport' },
+  { main: 'Rocket', easy: 'Spaceship', medium: 'Hot air balloon', category: 'transport' },
 
   // People & jobs
-  { main: 'Doctor', confusing: 'Nurse' },
-  { main: 'Teacher', confusing: 'Professor' },
-  { main: 'Police officer', confusing: 'Firefighter' },
-  { main: 'Chef', confusing: 'Waiter' },
-  { main: 'Pilot', confusing: 'Sailor' },
-  { main: 'Painter', confusing: 'Musician' },
-  { main: 'King', confusing: 'Prince' },
-
-  // Times & events
-  { main: 'Winter', confusing: 'Autumn' },
-  { main: 'Summer', confusing: 'Spring' },
-  { main: 'Birthday', confusing: 'Wedding' },
-  { main: 'Movie', confusing: 'Play' },
-  { main: 'Book', confusing: 'Magazine' },
+  { main: 'Doctor', easy: 'Nurse', medium: 'Chef', category: 'job' },
+  { main: 'Teacher', easy: 'Professor', medium: 'Police officer', category: 'job' },
+  { main: 'Farmer', easy: 'Gardener', medium: 'Fisherman', category: 'job' },
+  { main: 'King', easy: 'Prince', medium: 'Wizard', category: 'job' },
+  { main: 'Waiter', easy: 'Bartender', medium: 'Barber', category: 'job' },
+  { main: 'Painter', easy: 'Sculptor', medium: 'Musician', category: 'job' },
 ]

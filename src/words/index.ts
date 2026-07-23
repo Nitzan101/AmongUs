@@ -1,17 +1,17 @@
 import type { Language } from '../i18n'
-import { EN_PAIRS } from './en'
-import { HE_PAIRS } from './he'
-import type { Difficulty, WordPair } from './types'
+import { EN_WORDS } from './en'
+import { HE_WORDS } from './he'
+import type { Difficulty, WordEntry } from './types'
 
-export type { WordPair, Difficulty }
+export type { WordEntry, Difficulty }
 
-const BANKS: Record<Language, WordPair[]> = {
-  en: EN_PAIRS,
-  he: HE_PAIRS,
+const BANKS: Record<Language, WordEntry[]> = {
+  en: EN_WORDS,
+  he: HE_WORDS,
 }
 
-/** All pairs for a language (falls back to English for anything unexpected). */
-export function getPairs(language: Language): WordPair[] {
+/** All entries for a language (falls back to English for anything unexpected). */
+export function getWords(language: Language): WordEntry[] {
   return BANKS[language] ?? BANKS.en
 }
 
@@ -21,30 +21,32 @@ export interface WordAssignment {
   confusing: string
 }
 
-function randomIndex(length: number): number {
-  return Math.floor(Math.random() * length)
+function randomItem<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)]
 }
 
 /**
- * Choose the main word (for the crew) and the confusing word (for the imposter).
- * - normal: a genuinely related pair from the bank.
- * - hard:   two unrelated words — the main words of two different pairs.
+ * Choose the main word (crew) and the confusing word (imposter):
+ * - easy:   the near-twin variant.
+ * - medium: the same-category-but-distinct variant.
+ * - hard:   the main word of a different-category entry (genuinely unrelated).
  */
 export function pickWords(
   language: Language,
   difficulty: Difficulty,
 ): WordAssignment {
-  const pairs = getPairs(language)
+  const words = getWords(language)
+  const entry = randomItem(words)
 
-  if (difficulty === 'normal') {
-    const pair = pairs[randomIndex(pairs.length)]
-    return { main: pair.main, confusing: pair.confusing }
+  if (difficulty === 'easy') {
+    return { main: entry.main, confusing: entry.easy }
+  }
+  if (difficulty === 'medium') {
+    return { main: entry.main, confusing: entry.medium }
   }
 
-  const i = randomIndex(pairs.length)
-  let j = randomIndex(pairs.length)
-  while (j === i && pairs.length > 1) {
-    j = randomIndex(pairs.length)
-  }
-  return { main: pairs[i].main, confusing: pairs[j].main }
+  // hard: borrow an unrelated word from a different category.
+  const others = words.filter((w) => w.category !== entry.category)
+  const pool = others.length > 0 ? others : words.filter((w) => w !== entry)
+  return { main: entry.main, confusing: randomItem(pool).main }
 }

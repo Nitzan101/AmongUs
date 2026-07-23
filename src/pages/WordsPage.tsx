@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../components/ui/Button'
 import type { Language } from '../i18n'
-import { getPairs, pickWords, type Difficulty, type WordAssignment } from '../words'
+import { getWords, pickWords, type Difficulty, type WordAssignment } from '../words'
 
 export function WordsPage() {
   const { t, i18n } = useTranslation()
   const language = (i18n.resolvedLanguage ?? 'en') as Language
-  const pairs = getPairs(language)
+  const words = getWords(language)
 
   const [example, setExample] = useState<{
     difficulty: Difficulty
@@ -22,15 +22,18 @@ export function WordsPage() {
     <div className="flex flex-1 flex-col pb-4">
       <h1 className="text-3xl font-black text-content">{t('words.title')}</h1>
       <p className="mt-1 text-content-muted">
-        {t('words.count', { count: pairs.length })}
+        {t('words.count', { count: words.length })}
       </p>
 
-      <div className="mt-4 flex gap-2">
-        <Button variant="secondary" onClick={() => roll('normal')}>
-          {t('words.normalExample')}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={() => roll('easy')}>
+          {t('words.rollEasy')}
+        </Button>
+        <Button variant="secondary" onClick={() => roll('medium')}>
+          {t('words.rollMedium')}
         </Button>
         <Button variant="secondary" onClick={() => roll('hard')}>
-          {t('words.hardExample')}
+          {t('words.rollHard')}
         </Button>
       </div>
 
@@ -46,7 +49,7 @@ export function WordsPage() {
           </div>
           <div className="rounded-2xl border-2 border-accent-500 bg-accent-500/10 p-3 text-center">
             <div className="text-xs font-bold uppercase text-content-muted">
-              {t('words.imposterGets')}
+              {t('words.imposterGets')} · {t(`words.${example.difficulty}`)}
             </div>
             <div className="text-lg font-black text-content">
               {example.words.confusing}
@@ -55,22 +58,26 @@ export function WordsPage() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-[1fr_auto_1fr] gap-x-3 gap-y-2 text-sm">
+      <div className="mt-6 grid grid-cols-3 gap-x-2 gap-y-2 text-sm">
         <div className="font-bold uppercase tracking-wide text-content-muted">
           {t('words.main')}
         </div>
-        <div />
         <div className="font-bold uppercase tracking-wide text-content-muted">
-          {t('words.confusing')}
+          {t('words.easy')}
         </div>
-        {pairs.map((p, i) => (
+        <div className="font-bold uppercase tracking-wide text-content-muted">
+          {t('words.medium')}
+        </div>
+        {words.map((w, i) => (
           <div key={i} className="contents">
-            <div className="rounded-xl bg-surface-raised px-3 py-2 font-medium text-content">
-              {p.main}
+            <div className="rounded-xl bg-surface-raised px-3 py-2 font-bold text-content">
+              {w.main}
             </div>
-            <div className="self-center text-content-muted">↔</div>
             <div className="rounded-xl bg-surface-raised px-3 py-2 text-content-muted">
-              {p.confusing}
+              {w.easy}
+            </div>
+            <div className="rounded-xl bg-surface-raised px-3 py-2 text-content-muted">
+              {w.medium}
             </div>
           </div>
         ))}

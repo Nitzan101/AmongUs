@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button'
 import { OptionCard } from '../components/ui/Card'
 
 type Mode = 'half' | 'full'
-type Difficulty = 'normal' | 'hard'
+type Difficulty = 'easy' | 'medium' | 'hard'
 type Scoring = 'teamRace' | 'survivors' | 'detective'
 type Guess = 'final' | 'steal' | 'off'
 
@@ -31,7 +31,7 @@ export function CreateGamePage() {
   const navigate = useNavigate()
 
   const [mode, setMode] = useState<Mode>('half')
-  const [difficulty, setDifficulty] = useState<Difficulty>('normal')
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [scoring, setScoring] = useState<Scoring>('teamRace')
   const [guess, setGuess] = useState<Guess>('final')
 
@@ -60,10 +60,17 @@ export function CreateGamePage() {
       <Section title={t('create.difficulty')}>
         <OptionCard
           icon="🙂"
-          title={t('create.difficultyNormal')}
-          description={t('create.difficultyNormalDesc')}
-          selected={difficulty === 'normal'}
-          onSelect={() => setDifficulty('normal')}
+          title={t('create.difficultyEasy')}
+          description={t('create.difficultyEasyDesc')}
+          selected={difficulty === 'easy'}
+          onSelect={() => setDifficulty('easy')}
+        />
+        <OptionCard
+          icon="⚖️"
+          title={t('create.difficultyMedium')}
+          description={t('create.difficultyMediumDesc')}
+          selected={difficulty === 'medium'}
+          onSelect={() => setDifficulty('medium')}
         />
         <OptionCard
           icon="🔥"

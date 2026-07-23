@@ -48,7 +48,9 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
   - **Half-virtual** — app handles words, turn order, votes, scores only. Players speak out loud;
     the host taps one **Finish → vote** button when the circle is done.
   - **Full-virtual** — players type words in-app; everyone sees the said-words feed; duplicates blocked.
-- **Difficulty:** Normal (confusing word is *related* to the main word) / Hard (confusing word is *unrelated*).
+- **Difficulty (for the imposter):** Easy (confusing word is a *near-twin*) / Medium (default —
+  confusing word is *same category, clearly different*) / Hard (confusing word is *unrelated*,
+  from a different category).
 - **Scoring preset:** Team Race / Survivors / Detective.
 - **Guess rule:** Final Guess / Steal the Win / Off.
 - **Imposter awareness:** default the imposter knows he is the imposter; optional hidden-role variant.
@@ -63,8 +65,10 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 
 ## 5. Word sets
 
-- **Built-in bank:** ~250 authored **related pairs** per language (separate EN and HE lists —
-  authored per language, not translated). Hard mode pairs two unrelated words (no authoring needed).
+- **Built-in bank:** authored word entries per language (separate EN and HE lists, authored per
+  language — not translated). Each entry has a real word, an *easy* near-twin, a *medium*
+  same-category-but-distinct word, and a category tag. Hard mode borrows the real word of a
+  different-category entry (no extra authoring). Currently 48 entries per language; expandable.
 - **Custom sets** (account holders): creator writes the **main words**; next to each they may
   optionally fill a **confusing word**, or leave it blank to be auto-filled from the same set.
   Example: "Mom's Birthday" themed around the creator's mother.
