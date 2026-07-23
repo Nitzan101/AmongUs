@@ -12,6 +12,8 @@ the group votes to find the imposter; the imposter tries to blend in and survive
   their own word. Turn order rotates by one seat each new game (1,2,3 → 2,3,1 → 3,1,2 …).
 - **Forbidden:** a word from the **root** of the main word. Socially enforced (the app only
   reminds players); slipping up can expose or wrongly incriminate a player. Noted on the rules screen.
+- **No reactions:** players must keep a straight face — reacting to a clue (laughing, frowning,
+  "huh?") leaks whether it fit and ruins the round. Emphasised on the rules screen.
 - **No duplicate words** — you cannot repeat a word already said. App-enforced in full-virtual
   mode (players see the said-words feed); social rule in half-virtual mode.
 - After the circle, all living players cast a **secret, simultaneous vote** (no self-vote; the

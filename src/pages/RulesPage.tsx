@@ -42,6 +42,14 @@ export function RulesPage() {
         ))}
       </ol>
 
+      <div className="mt-3 flex gap-3 rounded-2xl border-2 border-sunny-400 bg-sunny-400/10 p-4">
+        <span className="text-3xl">😐</span>
+        <div>
+          <h2 className="font-black text-content">{t('rules.tipTitle')}</h2>
+          <p className="mt-0.5 text-sm text-content-muted">{t('rules.tipBody')}</p>
+        </div>
+      </div>
+
       <div className="mt-auto pt-8">
         <Button size="lg" fullWidth onClick={() => navigate('/')}>
           {t('rules.gotIt')}

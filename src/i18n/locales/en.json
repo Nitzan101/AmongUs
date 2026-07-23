@@ -78,6 +78,8 @@
     "step4Body": "Everyone votes in secret, then all votes are revealed. The most-voted player is out and their role shown.",
     "step5Title": "Win",
     "step5Body": "The crew wins by catching the imposter. The imposter wins by surviving. Scores add up across games.",
+    "tipTitle": "Golden rule: keep a straight face",
+    "tipBody": "Never react to what anyone says — no laughing, frowning, or \"huh?\". A reaction reveals whether a word fit, which hands the game to the imposter (or wrongly exposes a friend). Poker faces only!",
     "gotIt": "Got it!"
   },
   "auth": {
