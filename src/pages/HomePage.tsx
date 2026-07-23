@@ -1,10 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { useAuth } from '../auth/AuthContext'
 
 export function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { user, signOut } = useAuth()
+
+  const displayName = user?.displayName || user?.email?.split('@')[0] || ''
 
   return (
     <div className="flex flex-1 flex-col">
@@ -33,12 +37,27 @@ export function HomePage() {
         </Button>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4 text-center">
-        <p className="text-sm text-content-muted">{t('home.signInHint')}</p>
-        <Button variant="ghost" className="mt-1 text-brand-600">
-          {t('home.signIn')} →
-        </Button>
-      </div>
+      {user ? (
+        <div className="mt-6 flex items-center justify-between rounded-2xl border border-line bg-surface-raised p-4">
+          <span className="font-bold text-content">
+            {t('auth.greeting', { name: displayName })}
+          </span>
+          <Button variant="ghost" onClick={() => signOut()}>
+            {t('auth.signOut')}
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4 text-center">
+          <p className="text-sm text-content-muted">{t('home.signInHint')}</p>
+          <Button
+            variant="ghost"
+            className="mt-1 text-brand-600"
+            onClick={() => navigate('/signin')}
+          >
+            {t('home.signIn')} →
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

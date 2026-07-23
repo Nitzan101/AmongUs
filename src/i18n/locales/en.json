@@ -77,5 +77,35 @@
     "step5Title": "Win",
     "step5Body": "The crew wins by catching the imposter. The imposter wins by surviving. Scores add up across games.",
     "gotIt": "Got it!"
+  },
+  "auth": {
+    "signInTitle": "Welcome back",
+    "signUpTitle": "Create your account",
+    "signInSubtitle": "Sign in to host your own games.",
+    "signUpSubtitle": "You only need an account to host. Joining is always free.",
+    "google": "Continue with Google",
+    "or": "or",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "At least 6 characters",
+    "signInButton": "Sign in",
+    "signUpButton": "Create account",
+    "toSignUp": "New here? Create an account",
+    "toSignIn": "Already have an account? Sign in",
+    "signOut": "Sign out",
+    "greeting": "Hi, {{name}}!",
+    "notConfigured": "Sign-in isn't connected yet. (Firebase setup in progress.)",
+    "errors": {
+      "invalidEmail": "That email address doesn't look right.",
+      "invalidCredential": "Wrong email or password.",
+      "emailInUse": "An account with this email already exists.",
+      "weakPassword": "Please choose a password of at least 6 characters.",
+      "popupClosed": "The sign-in window was closed before finishing.",
+      "network": "Network problem. Check your connection and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
   }
 }

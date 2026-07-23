@@ -77,5 +77,35 @@
     "step5Title": "נצחו",
     "step5Body": "הצוות מנצח בתפיסת המתחזה. המתחזה מנצח אם הוא שורד. הנקודות מצטברות לאורך המשחקים.",
     "gotIt": "הבנתי!"
+  },
+  "auth": {
+    "signInTitle": "ברוכים השבים",
+    "signUpTitle": "יצירת חשבון",
+    "signInSubtitle": "התחברו כדי לפתוח משחקים משלכם.",
+    "signUpSubtitle": "חשבון צריך רק כדי לפתוח משחק. להצטרפות זה תמיד חינם.",
+    "google": "המשך עם Google",
+    "or": "או",
+    "name": "שם",
+    "namePlaceholder": "השם שלכם",
+    "email": "אימייל",
+    "emailPlaceholder": "you@example.com",
+    "password": "סיסמה",
+    "passwordPlaceholder": "לפחות 6 תווים",
+    "signInButton": "התחברות",
+    "signUpButton": "יצירת חשבון",
+    "toSignUp": "חדשים כאן? צרו חשבון",
+    "toSignIn": "כבר יש לכם חשבון? התחברו",
+    "signOut": "התנתקות",
+    "greeting": "היי, {{name}}!",
+    "notConfigured": "ההתחברות עדיין לא מחוברת. (הגדרת Firebase בתהליך.)",
+    "errors": {
+      "invalidEmail": "כתובת האימייל לא נראית תקינה.",
+      "invalidCredential": "אימייל או סיסמה שגויים.",
+      "emailInUse": "כבר קיים חשבון עם האימייל הזה.",
+      "weakPassword": "בחרו סיסמה של לפחות 6 תווים.",
+      "popupClosed": "חלון ההתחברות נסגר לפני שהסתיים.",
+      "network": "בעיית רשת. בדקו את החיבור ונסו שוב.",
+      "generic": "משהו השתבש. נסו שוב."
+    }
   }
 }

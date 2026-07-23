@@ -4,7 +4,11 @@
       "PowerShell(npm run build)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "PowerShell($code = \\(Get-Command code -ErrorAction SilentlyContinue\\); if \\($code\\) { \"VS Code IS installed at: $\\($code.Source\\)\" } else { \"VS Code not found on PATH\" })",
+      "PowerShell($gh = \\(Get-Command gh -ErrorAction SilentlyContinue\\); if \\($gh\\) { \"gh CLI installed: $\\($gh.Source\\)\"; gh auth status } else { \"gh CLI NOT installed\" })",
+      "Bash(git remote *)",
+      "Bash(git push *)"
     ]
   }
 }
