@@ -29,5 +29,6 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 1 complete** — navigable screen skeleton, playful light/dark
-design system, and full English/Hebrew switching with right-to-left support.
+Currently: **Milestone 2 complete** — Firebase authentication is wired up, with working
+Google, email/password, and anonymous (guest) sign-in, on top of the Milestone 1 skeleton
+(navigable screens, playful light/dark design, English/Hebrew with right-to-left).
