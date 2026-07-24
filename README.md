@@ -29,7 +29,10 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 3 complete** — a bilingual word bank (~131 words per language, organized as
-categories → clusters) with three imposter-difficulty tiers generated live (easy = same cluster /
-medium = same category / hard = unrelated), so there's no fixed mapping to memorize. Includes a
-`/words` review screen. On top of Firebase auth (M2) and the localized screen skeleton (M1).
+Currently: **Milestone 4 complete** — a Firestore-backed live lobby: hosts create a game (PIN +
+share link), guests join without an account (anonymous auth), and the player list syncs in real
+time with host kick and a start-game gate. Verified across three devices. On top of the word bank
+(M3), Firebase auth (M2), and the localized skeleton (M1).
+
+For phone testing on the local network, the dev server listens on the LAN (`server.host` in
+`vite.config.ts`); open the printed `Network:` URL on a phone on the same WiFi.
