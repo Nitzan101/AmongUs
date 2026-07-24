@@ -102,3 +102,32 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 6. Full-virtual mode — typed words, said-words feed, duplicate blocking.
 7. Custom word sets — create/edit themed sets with optional per-entry confusing word.
 8. Polish + deploy — PWA install, animations, rules/tutorial screen, public URL.
+
+## 9. Robustness backlog (connection & host handling)
+
+Raised during Milestone 5. Current behaviour and the intended fix:
+
+- **Accidental leave / disconnect:** players are *not* auto-kicked (intended). A player's
+  record persists and, because the session is remembered on that device, reopening the link
+  resumes them as the same player. **Gap:** a disconnected-but-still-listed player can stall
+  voting (the reveal waits for a vote that never arrives). **Fix:** host "reveal now" override
+  + presence/"disconnected" indicator.
+- **Host leaves:** if the host closes the browser they can return and resume; if truly gone the
+  game stalls (nobody can drive it). **Fix:** host migration (auto-pass leadership).
+- **Kick during game:** currently lobby-only. Mid-game kick is future (must adjust alive list,
+  turn order, and any in-flight votes).
+- **Rejoin UX:** if you're already a player in a game, the link should drop you straight into
+  it instead of re-asking nickname/character.
+- **Join in progress:** currently blocked ("already started"). Future: let latecomers wait and
+  join the next game (the room already returns to a lobby between games).
+
+## 10. Future features backlog
+
+- **Account vs guest (design):** guests (anonymous) are zero-friction but device-bound; accounts
+  give a stable cross-device identity and are the only way to accumulate long-term stats. Keep
+  guest join; gently encourage sign-in for anyone who wants history/medals to persist. A signed-in
+  user joining uses their account identity as their player — supported and encouraged.
+- **Stats & badges:** avg placement, "won 5 games", "led 3 games", "1-year account", etc. Needs a
+  per-account stats store updated at game end; account users only.
+- **Share/publish a game or word set:** shareable link to copy a themed set into your own account
+  and host with it — ties into custom word sets (Milestone 7).
