@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { CreateGamePage } from './pages/CreateGamePage'
 import { JoinGamePage } from './pages/JoinGamePage'
 import { LobbyPage } from './pages/LobbyPage'
+import { GamePage } from './pages/GamePage'
 import { RulesPage } from './pages/RulesPage'
 import { SignInPage } from './pages/SignInPage'
 import { WordsPage } from './pages/WordsPage'
@@ -19,6 +20,7 @@ const router = createBrowserRouter([
       { path: '/join', element: <JoinGamePage /> },
       { path: '/join/:pin', element: <JoinGamePage /> },
       { path: '/lobby/:pin', element: <LobbyPage /> },
+      { path: '/game/:pin', element: <GamePage /> },
       { path: '/rules', element: <RulesPage /> },
       { path: '/words', element: <WordsPage /> },
     ],

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
@@ -15,6 +15,13 @@ export function LobbyPage() {
   const { user } = useAuth()
   const { game, players, loading } = useGame(pin)
   const [copied, setCopied] = useState(false)
+
+  // When the host starts the game, everyone in the lobby follows into it.
+  useEffect(() => {
+    if (game?.status === 'playing') {
+      navigate(`/game/${pin}`, { replace: true })
+    }
+  }, [game?.status, pin, navigate])
 
   if (loading) {
     return (
@@ -38,11 +45,10 @@ export function LobbyPage() {
   const me = players.find((p) => p.id === user?.uid)
 
   if (game.status === 'playing') {
+    // The effect above redirects into the game; show a brief hand-off.
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <div className="text-6xl">🎬</div>
-        <h1 className="text-2xl font-black text-content">{t('lobby.starting')}</h1>
-        <p className="max-w-xs text-content-muted">{t('lobby.startingSoon')}</p>
+      <div className="flex flex-1 items-center justify-center">
+        <div className="animate-pulse text-content-muted">{t('lobby.starting')}</div>
       </div>
     )
   }

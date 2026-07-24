@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { subscribeGame, subscribePlayers } from './gameService'
-import type { Game, Player } from './types'
+import { subscribeGame, subscribePlayers, subscribeSecret } from './gameService'
+import type { Game, Player, Secret } from './types'
 
 /** Subscribe to a game document and its players in real time. */
 export function useGame(pin: string | undefined) {
@@ -31,4 +31,17 @@ export function useGame(pin: string | undefined) {
   }, [pin])
 
   return { game, players, loading, error }
+}
+
+/** Subscribe to the caller's own secret assignment for a game. */
+export function useSecret(pin: string | undefined, uid: string | undefined) {
+  const [secret, setSecret] = useState<Secret | null>(null)
+
+  useEffect(() => {
+    setSecret(null)
+    if (!pin || !uid) return
+    return subscribeSecret(pin, uid, setSecret)
+  }, [pin, uid])
+
+  return secret
 }

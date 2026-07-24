@@ -89,6 +89,23 @@
     "hostNote": "The host starts the game once everyone is in.",
     "leave": "Leave game"
   },
+  "game": {
+    "dealing": "Dealing the words…",
+    "tapToReveal": "Tap to reveal your word",
+    "keepItSecret": "Keep it to yourself!",
+    "tapToHide": "Tap to hide",
+    "yourWord": "Your word",
+    "imposterTitle": "You're the imposter!",
+    "imposterHint": "Blend in. Work out the real word from the clues.",
+    "crewHint": "Give a clue the others will get — but the imposter won't.",
+    "cluesTitle": "Give your clues",
+    "cluesHint": "In turn order, each player says one word connected to their word — out loud.",
+    "turnOrder": "Turn order",
+    "finishToVote": "Everyone's spoken → Vote",
+    "waitingHostVote": "Waiting for the host to open voting…",
+    "votingSoon": "Voting",
+    "votingSoonHint": "The voting screen arrives in the next stage."
+  },
   "rules": {
     "title": "How to play",
     "step1Title": "Everyone gets a word",

@@ -7,11 +7,13 @@ import {
   onSnapshot,
   setDoc,
   updateDoc,
+  writeBatch,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { signInAnonymously } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
-import type { Game, GameOptions, Player } from './types'
+import { buildAssignment } from './assignment'
+import type { Game, GameOptions, Player, RoundPhase, Secret } from './types'
 
 /** Errors thrown by this module carry a stable `code` the UI maps to a message. */
 export class GameError extends Error {
@@ -44,6 +46,8 @@ const playersRef = (pin: string) =>
   collection(requireDb().db, 'games', pin, 'players')
 const playerRef = (pin: string, uid: string) =>
   doc(requireDb().db, 'games', pin, 'players', uid)
+const secretRef = (pin: string, uid: string) =>
+  doc(requireDb().db, 'games', pin, 'secrets', uid)
 
 /** Create a new game room, add the host as the first player, return the PIN. */
 export async function createGame(
@@ -151,8 +155,62 @@ export async function leaveGame(pin: string, uid: string): Promise<void> {
   await deleteDoc(playerRef(pin, uid))
 }
 
-/** Move the game from the lobby into play (host action). */
+/**
+ * Deal a fresh game (host action): choose the imposter, deal words into
+ * per-player secret docs, set the turn order, and move into the clue phase.
+ */
 export async function startGame(pin: string): Promise<void> {
+  const { db } = requireDb()
+
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) throw new GameError('game-not-found')
+  const game = snap.data() as Game
+
+  const playersSnap = await getDocs(playersRef(pin))
+  const playerIds = playersSnap.docs.map((d) => d.id)
+  if (playerIds.length < 4) throw new GameError('not-enough-players')
+
+  const assignment = buildAssignment(playerIds, {
+    language: game.language,
+    difficulty: game.difficulty,
+    seatOrder: game.seatOrder,
+    prevGameNumber: game.gameNumber,
+  })
+
+  const batch = writeBatch(db)
+  for (const id of playerIds) {
+    batch.set(secretRef(pin, id), assignment.secrets[id])
+  }
+  batch.update(gameRef(pin), {
+    status: 'playing',
+    seatOrder: assignment.seatOrder,
+    gameNumber: assignment.gameNumber,
+    round: {
+      number: 1,
+      phase: 'clues',
+      turnOrder: assignment.turnOrder,
+      aliveIds: assignment.seatOrder,
+    },
+  })
+  await batch.commit()
+}
+
+/** Advance the round to a new phase (host action). */
+export async function setPhase(pin: string, phase: RoundPhase): Promise<void> {
   requireDb()
-  await updateDoc(gameRef(pin), { status: 'playing' })
+  await updateDoc(gameRef(pin), { 'round.phase': phase })
+}
+
+/** Live updates to the caller's own secret assignment. */
+export function subscribeSecret(
+  pin: string,
+  uid: string,
+  onChange: (secret: Secret | null) => void,
+  onError?: (e: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    secretRef(pin, uid),
+    (snap) => onChange(snap.exists() ? (snap.data() as Secret) : null),
+    onError,
+  )
 }
