@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
-import { subscribeGame, subscribePlayers, subscribeSecret } from './gameService'
-import type { Game, Player, Secret } from './types'
+import {
+  subscribeGame,
+  subscribePlayers,
+  subscribeSecret,
+  subscribeVotes,
+} from './gameService'
+import type { Game, Player, Secret, Vote } from './types'
 
 /** Subscribe to a game document and its players in real time. */
 export function useGame(pin: string | undefined) {
@@ -44,4 +49,17 @@ export function useSecret(pin: string | undefined, uid: string | undefined) {
   }, [pin, uid])
 
   return secret
+}
+
+/** Subscribe to the current votes for a game. */
+export function useVotes(pin: string | undefined) {
+  const [votes, setVotes] = useState<Vote[]>([])
+
+  useEffect(() => {
+    setVotes([])
+    if (!pin) return
+    return subscribeVotes(pin, setVotes)
+  }, [pin])
+
+  return votes
 }

@@ -7,7 +7,18 @@ export type GuessRule = 'final' | 'steal' | 'off'
 export type GameStatus = 'lobby' | 'playing' | 'ended'
 
 /** The phase within an active game. */
-export type RoundPhase = 'clues' | 'voting' | 'tally' | 'result'
+export type RoundPhase =
+  | 'clues'
+  | 'voting'
+  | 'tally'
+  | 'reveal'
+  | 'result'
+
+/** Which vote within a round: the first vote, or a revote after a tie. */
+export type VotingRound = 'first' | 'revote'
+
+/** How a finished game ended. */
+export type Outcome = 'crew-wins' | 'imposter-wins'
 
 /** The choices the host makes when creating a game. */
 export interface GameOptions {
@@ -26,6 +37,23 @@ export interface Round {
   turnOrder: string[]
   /** Players still in the game this round (player uids). */
   aliveIds: string[]
+  /** First vote or a post-tie revote. */
+  votingRound?: VotingRound | null
+  /** Who may be voted for this sub-round (tied players on a revote). */
+  candidates?: string[] | null
+  /** Set when a player is eliminated, for the reveal screen. */
+  eliminatedId?: string | null
+  eliminatedRole?: 'crew' | 'imposter' | null
+  /** Set when the game ends. */
+  outcome?: Outcome | null
+  /** The imposter, revealed only once the game is over. */
+  imposterId?: string | null
+}
+
+/** A single cast vote (stored at games/{pin}/votes/{voterId}). */
+export interface Vote {
+  voter: string
+  target: string
 }
 
 /** A game room document (stored at games/{pin}). */

@@ -13,7 +13,8 @@ import {
 import { signInAnonymously } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
 import { buildAssignment } from './assignment'
-import type { Game, GameOptions, Player, RoundPhase, Secret } from './types'
+import { tallyVotes } from './tally'
+import type { Game, GameOptions, Player, RoundPhase, Secret, Vote } from './types'
 
 /** Errors thrown by this module carry a stable `code` the UI maps to a message. */
 export class GameError extends Error {
@@ -48,6 +49,9 @@ const playerRef = (pin: string, uid: string) =>
   doc(requireDb().db, 'games', pin, 'players', uid)
 const secretRef = (pin: string, uid: string) =>
   doc(requireDb().db, 'games', pin, 'secrets', uid)
+const votesRef = (pin: string) => collection(requireDb().db, 'games', pin, 'votes')
+const voteRef = (pin: string, voterId: string) =>
+  doc(requireDb().db, 'games', pin, 'votes', voterId)
 
 /** Create a new game room, add the host as the first player, return the PIN. */
 export async function createGame(
@@ -213,4 +217,160 @@ export function subscribeSecret(
     (snap) => onChange(snap.exists() ? (snap.data() as Secret) : null),
     onError,
   )
+}
+
+async function clearVotes(pin: string): Promise<void> {
+  const { db } = requireDb()
+  const snap = await getDocs(votesRef(pin))
+  if (snap.empty) return
+  const batch = writeBatch(db)
+  snap.docs.forEach((d) => batch.delete(d.ref))
+  await batch.commit()
+}
+
+/** Find which of the given players is the imposter (read at game end only). */
+async function findImposter(
+  pin: string,
+  ids: string[],
+): Promise<string | null> {
+  for (const id of ids) {
+    const snap = await getDoc(secretRef(pin, id))
+    if (snap.exists() && (snap.data() as Secret).role === 'imposter') return id
+  }
+  return null
+}
+
+/** Open voting (host, from the clue phase). */
+export async function openVoting(pin: string): Promise<void> {
+  requireDb()
+  await clearVotes(pin)
+  const snap = await getDoc(gameRef(pin))
+  const game = snap.data() as Game
+  await updateDoc(gameRef(pin), {
+    'round.phase': 'voting',
+    'round.votingRound': 'first',
+    'round.candidates': game.round?.aliveIds ?? [],
+  })
+}
+
+/** Cast (or change) your vote. */
+export async function castVote(
+  pin: string,
+  voterId: string,
+  targetId: string,
+): Promise<void> {
+  requireDb()
+  const vote: Vote = { voter: voterId, target: targetId }
+  await setDoc(voteRef(pin, voterId), vote)
+}
+
+/** Live updates to the current votes. */
+export function subscribeVotes(
+  pin: string,
+  onChange: (votes: Vote[]) => void,
+  onError?: (e: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    votesRef(pin),
+    (snap) => onChange(snap.docs.map((d) => d.data() as Vote)),
+    onError,
+  )
+}
+
+/** Reveal the votes (host, once everyone has voted). */
+export async function revealVotes(pin: string): Promise<void> {
+  requireDb()
+  await updateDoc(gameRef(pin), { 'round.phase': 'tally' })
+}
+
+/**
+ * Resolve the revealed votes (host). Unique top → elimination + role reveal.
+ * Tie on the first vote → revote among the tied; tie again → no elimination,
+ * next round.
+ */
+export async function resolveVote(pin: string): Promise<void> {
+  requireDb()
+  const snap = await getDoc(gameRef(pin))
+  const game = snap.data() as Game
+  const round = game.round!
+  const votesSnap = await getDocs(votesRef(pin))
+  const votes = votesSnap.docs.map((d) => d.data() as Vote)
+  const candidates = round.candidates ?? round.aliveIds
+
+  const result = tallyVotes(votes, candidates)
+
+  if (result.kind === 'tie') {
+    await clearVotes(pin)
+    if (round.votingRound === 'first' && (result.tied?.length ?? 0) > 1) {
+      // Revote among only the tied players.
+      await updateDoc(gameRef(pin), {
+        'round.phase': 'voting',
+        'round.votingRound': 'revote',
+        'round.candidates': result.tied,
+      })
+    } else {
+      // Still tied (or nobody votable) → nobody out, next round.
+      await updateDoc(gameRef(pin), {
+        'round.phase': 'clues',
+        'round.number': round.number + 1,
+        'round.votingRound': null,
+        'round.candidates': null,
+      })
+    }
+    return
+  }
+
+  const eliminatedId = result.eliminatedId!
+  const secretSnap = await getDoc(secretRef(pin, eliminatedId))
+  const role = secretSnap.exists()
+    ? (secretSnap.data() as Secret).role
+    : 'crew'
+  await updateDoc(gameRef(pin), {
+    'round.phase': 'reveal',
+    'round.eliminatedId': eliminatedId,
+    'round.eliminatedRole': role,
+  })
+}
+
+/** Continue after the elimination reveal (host): next round, or game over. */
+export async function continueAfterReveal(pin: string): Promise<void> {
+  requireDb()
+  const snap = await getDoc(gameRef(pin))
+  const round = (snap.data() as Game).round!
+  const newAlive = round.aliveIds.filter((id) => id !== round.eliminatedId)
+  await clearVotes(pin)
+
+  if (round.eliminatedRole === 'imposter') {
+    await updateDoc(gameRef(pin), {
+      'round.phase': 'result',
+      'round.outcome': 'crew-wins',
+      'round.aliveIds': newAlive,
+      'round.imposterId': round.eliminatedId,
+    })
+  } else if (newAlive.length <= 2) {
+    // Imposter has reached the final two → auto-win.
+    await updateDoc(gameRef(pin), {
+      'round.phase': 'result',
+      'round.outcome': 'imposter-wins',
+      'round.aliveIds': newAlive,
+      'round.imposterId': await findImposter(pin, newAlive),
+    })
+  } else {
+    await updateDoc(gameRef(pin), {
+      'round.phase': 'clues',
+      'round.number': round.number + 1,
+      'round.aliveIds': newAlive,
+      'round.eliminatedId': null,
+      'round.eliminatedRole': null,
+      'round.votingRound': null,
+      'round.candidates': null,
+    })
+  }
+}
+
+/** Return the room to the lobby for another game (host). */
+export async function backToLobby(pin: string): Promise<void> {
+  requireDb()
+  await clearVotes(pin)
+  await updateDoc(gameRef(pin), { status: 'lobby', round: null })
 }
