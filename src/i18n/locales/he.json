@@ -121,7 +121,17 @@
     "imposterWins": "המתחזה מנצח!",
     "theImposterWas": "המתחזה היה",
     "backToLobby": "חזרה לחדר ההמתנה",
-    "waitingHostNext": "מחכים שהמארח ימשיך…"
+    "waitingHostNext": "מחכים שהמארח ימשיך…",
+    "guessTitle": "הניחוש האחרון שלכם",
+    "guessHint": "נתפסתם! נחשו את המילה האמיתית לנקודות בונוס.",
+    "guessPlaceholder": "המילה האמיתית…",
+    "submitGuess": "שליחת ניחוש",
+    "imposterGuessing": "המתחזה מנחש את המילה…",
+    "scoreboard": "לוח התוצאות",
+    "theWordWas": "המילה הייתה",
+    "guessRight": "המתחזה ניחש \"{{guess}}\" — נכון!",
+    "guessWrong": "המתחזה ניחש \"{{guess}}\" — שגוי.",
+    "nextGame": "משחק הבא"
   },
   "rules": {
     "title": "איך משחקים",

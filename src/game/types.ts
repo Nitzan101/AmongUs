@@ -12,6 +12,7 @@ export type RoundPhase =
   | 'voting'
   | 'tally'
   | 'reveal'
+  | 'guess'
   | 'result'
 
 /** Which vote within a round: the first vote, or a revote after a tie. */
@@ -44,10 +45,17 @@ export interface Round {
   /** Set when a player is eliminated, for the reveal screen. */
   eliminatedId?: string | null
   eliminatedRole?: 'crew' | 'imposter' | null
+  /** Every vote cast this game, accumulated for the Detective scoring bonus. */
+  voteHistory?: Vote[]
+  /** The caught imposter's typed guess at the main word (guess phase). */
+  guessText?: string | null
+  guessCorrect?: boolean | null
   /** Set when the game ends. */
   outcome?: Outcome | null
   /** The imposter, revealed only once the game is over. */
   imposterId?: string | null
+  /** The real word, revealed only once the game is over. */
+  mainWord?: string | null
 }
 
 /** A single cast vote (stored at games/{pin}/votes/{voterId}). */

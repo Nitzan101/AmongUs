@@ -6,11 +6,14 @@ import { useAuth } from '../auth/AuthContext'
 import { useGame, useSecret, useVotes } from '../game/useGame'
 import {
   backToLobby,
+  castGuess,
   castVote,
   continueAfterReveal,
   openVoting,
+  resolveGuess,
   resolveVote,
   revealVotes,
+  startGame,
 } from '../game/gameService'
 import type { Player, Round, Secret, Vote } from '../game/types'
 
@@ -376,44 +379,171 @@ function RevealPhase({
   )
 }
 
+function GuessPhase({
+  pin,
+  round,
+  secret,
+  isHost,
+}: {
+  pin: string
+  round: Round
+  secret: Secret | null
+  isHost: boolean
+}) {
+  const { t } = useTranslation()
+  const [guess, setGuess] = useState('')
+  const amImposter = secret?.role === 'imposter'
+  const submitted = round.guessText != null
+
+  if (amImposter && !submitted) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <div className="text-6xl">🎯</div>
+        <h1 className="mt-2 text-2xl font-black text-content">
+          {t('game.guessTitle')}
+        </h1>
+        <p className="mt-1 text-content-muted">{t('game.guessHint')}</p>
+        <input
+          value={guess}
+          onChange={(e) => setGuess(e.target.value)}
+          placeholder={t('game.guessPlaceholder')}
+          className="mt-4 w-full rounded-2xl border-2 border-line bg-surface-raised px-4 py-3 text-lg text-content outline-none focus:border-brand-500"
+        />
+        <div className="mt-auto pt-8">
+          <Button
+            size="lg"
+            fullWidth
+            disabled={guess.trim().length === 0}
+            onClick={() => castGuess(pin, guess.trim())}
+          >
+            {t('game.submitGuess')}
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Everyone else (and the imposter after submitting) waits for the result.
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+      <div className="animate-pulse text-5xl">🎯</div>
+      <h1 className="text-2xl font-black text-content">
+        {t('game.imposterGuessing')}
+      </h1>
+      {!isHost && (
+        <p className="text-sm text-content-muted">{t('game.waitingHost')}</p>
+      )}
+    </div>
+  )
+}
+
+function Scoreboard({ players }: { players: Player[] }) {
+  const { t } = useTranslation()
+  const ranked = [...players].sort((a, b) => b.score - a.score)
+  return (
+    <div>
+      <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
+        {t('game.scoreboard')}
+      </h2>
+      <ul className="mt-2 flex flex-col gap-2">
+        {ranked.map((p, i) => (
+          <li
+            key={p.id}
+            className="flex items-center gap-3 rounded-2xl border border-line bg-surface-raised p-3"
+          >
+            <span className="w-5 text-center font-black text-content-muted">
+              {i + 1}
+            </span>
+            <span className="text-2xl">{p.character}</span>
+            <span className="flex-1 font-bold text-content">{p.name}</span>
+            <span className="text-lg font-black text-brand-600">{p.score}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ResultPhase({
   pin,
   round,
   byId,
+  players,
   isHost,
 }: {
   pin: string
   round: Round
   byId: PlayerMap
+  players: Player[]
   isHost: boolean
 }) {
   const { t } = useTranslation()
   const crewWon = round.outcome === 'crew-wins'
   const imposter = round.imposterId ? byId.get(round.imposterId) : null
+  const guessed = round.guessText != null
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+    <div className="flex flex-1 flex-col pb-4">
+      <div className="flex flex-col items-center gap-2 pt-2 text-center">
         <div className="text-6xl">{crewWon ? '🎉' : '😈'}</div>
         <h1 className="text-3xl font-black text-content">
           {crewWon ? t('game.crewWins') : t('game.imposterWins')}
         </h1>
         {imposter && (
-          <p className="text-lg text-content-muted">
+          <p className="text-content-muted">
             {t('game.theImposterWas')}{' '}
             <span className="font-black text-content">
               {imposter.character} {imposter.name}
             </span>
           </p>
         )}
+        {round.mainWord && (
+          <p className="text-content-muted">
+            {t('game.theWordWas')}{' '}
+            <span className="font-black text-content">{round.mainWord}</span>
+          </p>
+        )}
+        {guessed && (
+          <p
+            className={
+              'rounded-full px-3 py-1 text-sm font-bold ' +
+              (round.guessCorrect
+                ? 'bg-accent-500/15 text-accent-600'
+                : 'bg-surface-raised text-content-muted')
+            }
+          >
+            {round.guessCorrect
+              ? t('game.guessRight', { guess: round.guessText })
+              : t('game.guessWrong', { guess: round.guessText })}
+          </p>
+        )}
       </div>
 
-      <HostOrWait
-        isHost={isHost}
-        label={t('game.backToLobby')}
-        onClick={() => backToLobby(pin)}
-        waitKey="game.waitingHostNext"
-      />
+      <div className="mt-6">
+        <Scoreboard players={players} />
+      </div>
+
+      <div className="mt-auto pt-6">
+        {isHost ? (
+          <>
+            <Button size="lg" fullWidth onClick={() => startGame(pin)}>
+              {t('game.nextGame')}
+            </Button>
+            <Button
+              variant="ghost"
+              fullWidth
+              className="mt-2"
+              onClick={() => backToLobby(pin)}
+            >
+              {t('game.backToLobby')}
+            </Button>
+          </>
+        ) : (
+          <p className="text-center text-sm text-content-muted">
+            {t('game.waitingHostNext')}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -450,6 +580,18 @@ export function GamePage() {
     }
   }, [isHost, round?.phase, round?.aliveIds.length, votes.length, pin])
 
+  // The host scores the imposter's guess once it's submitted.
+  useEffect(() => {
+    if (
+      isHost &&
+      round?.phase === 'guess' &&
+      round.guessText != null &&
+      round.guessCorrect == null
+    ) {
+      resolveGuess(pin)
+    }
+  }, [isHost, round?.phase, round?.guessText, round?.guessCorrect, pin])
+
   if (loading || !game || !round) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -481,8 +623,20 @@ export function GamePage() {
 
     case 'reveal':
       return <RevealPhase pin={pin} round={round} byId={byId} isHost={isHost} />
+    case 'guess':
+      return (
+        <GuessPhase pin={pin} round={round} secret={secret} isHost={isHost} />
+      )
     case 'result':
-      return <ResultPhase pin={pin} round={round} byId={byId} isHost={isHost} />
+      return (
+        <ResultPhase
+          pin={pin}
+          round={round}
+          byId={byId}
+          players={players}
+          isHost={isHost}
+        />
+      )
     default:
       return null
   }

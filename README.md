@@ -29,10 +29,10 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 4 complete** — a Firestore-backed live lobby: hosts create a game (PIN +
-share link), guests join without an account (anonymous auth), and the player list syncs in real
-time with host kick and a start-game gate. Verified across three devices. On top of the word bank
-(M3), Firebase auth (M2), and the localized skeleton (M1).
+Currently: **Milestone 5 complete** — the full playable game (half-virtual): deal secret words
+(one random imposter), rotating turn order, secret voting with a reveal, elimination + role flip,
+tie→revote→skip, the caught-imposter guess phase, three scoring presets, a cumulative scoreboard,
+and next-game. On top of the live lobby (M4), word bank (M3), auth (M2), and localized skeleton (M1).
 
 For phone testing on the local network, the dev server listens on the LAN (`server.host` in
 `vite.config.ts`); open the printed `Network:` URL on a phone on the same WiFi.

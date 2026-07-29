@@ -121,7 +121,17 @@
     "imposterWins": "The imposter wins!",
     "theImposterWas": "The imposter was",
     "backToLobby": "Back to lobby",
-    "waitingHostNext": "Waiting for the host to continue…"
+    "waitingHostNext": "Waiting for the host to continue…",
+    "guessTitle": "Your final guess",
+    "guessHint": "You were caught! Guess the real word for bonus points.",
+    "guessPlaceholder": "The real word…",
+    "submitGuess": "Submit guess",
+    "imposterGuessing": "The imposter is guessing the word…",
+    "scoreboard": "Scoreboard",
+    "theWordWas": "The word was",
+    "guessRight": "The imposter guessed \"{{guess}}\" — correct!",
+    "guessWrong": "The imposter guessed \"{{guess}}\" — wrong.",
+    "nextGame": "Next game"
   },
   "rules": {
     "title": "How to play",
