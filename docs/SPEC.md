@@ -131,3 +131,11 @@ Raised during Milestone 5. Current behaviour and the intended fix:
   per-account stats store updated at game end; account users only.
 - **Share/publish a game or word set:** shareable link to copy a themed set into your own account
   and host with it — ties into custom word sets (Milestone 7).
+
+**Language vs. words (design decision):** the UI language (EN/HE toggle) and the word-content
+language are independent. Words are **never translated** — a dealt word is a fixed string shown
+as authored, regardless of each player's UI language (auto-translating would break the
+imposter/confusing-word pairing and the root rule). Custom sets accept free text in any language
+and may mix languages. Already true for dealt words today. Future refinement (built-in bank only):
+an explicit "word language" picker at game creation, separate from the host's UI language, for
+mixed groups.
