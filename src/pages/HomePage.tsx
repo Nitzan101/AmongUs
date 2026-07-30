@@ -1,14 +1,49 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../auth/AuthContext'
+import { findMyActiveGame, hasRememberedGame } from '../game/gameService'
 
 export function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, signOut, loading } = useAuth()
+  const [resuming, setResuming] = useState(hasRememberedGame)
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || ''
+
+  // If this device was mid-game (closed tab, phone locked, etc.), drop
+  // straight back into it instead of showing the home screen.
+  useEffect(() => {
+    if (loading) return
+    let cancelled = false
+    if (!user) {
+      setResuming(false)
+      return
+    }
+    findMyActiveGame(user.uid).then((active) => {
+      if (cancelled) return
+      if (active) {
+        navigate(`/lobby/${active.pin}`, { replace: true })
+      } else {
+        setResuming(false)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [loading, user, navigate])
+
+  if (resuming) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="animate-pulse text-content-muted">
+          {t('lobby.loading')}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-1 flex-col">

@@ -29,10 +29,12 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestone 5 complete** — the full playable game (half-virtual): deal secret words
-(one random imposter), rotating turn order, secret voting with a reveal, elimination + role flip,
+Currently: **Milestone 5 complete + party-proofing pass** — the full playable game (half-virtual):
+deal secret words, rotating turn order, secret voting with a reveal, elimination + role flip,
 tie→revote→skip, the caught-imposter guess phase, three scoring presets, a cumulative scoreboard,
-and next-game. On top of the live lobby (M4), word bank (M3), auth (M2), and localized skeleton (M1).
+and next-game — hardened with a presence heartbeat, "disconnected" tags, automatic host migration
+if the host vanishes, a host "reveal now" override so a stalled vote can't freeze the round, and
+auto-resume into your active game on reload. See [docs/SPEC.md §9](docs/SPEC.md) for details.
 
 For phone testing on the local network, the dev server listens on the LAN (`server.host` in
 `vite.config.ts`); open the printed `Network:` URL on a phone on the same WiFi.

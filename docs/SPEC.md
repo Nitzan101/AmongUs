@@ -105,21 +105,33 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 
 ## 9. Robustness backlog (connection & host handling)
 
-Raised during Milestone 5. Current behaviour and the intended fix:
+Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical items:**
 
-- **Accidental leave / disconnect:** players are *not* auto-kicked (intended). A player's
-  record persists and, because the session is remembered on that device, reopening the link
-  resumes them as the same player. **Gap:** a disconnected-but-still-listed player can stall
-  voting (the reveal waits for a vote that never arrives). **Fix:** host "reveal now" override
-  + presence/"disconnected" indicator.
-- **Host leaves:** if the host closes the browser they can return and resume; if truly gone the
-  game stalls (nobody can drive it). **Fix:** host migration (auto-pass leadership).
-- **Kick during game:** currently lobby-only. Mid-game kick is future (must adjust alive list,
-  turn order, and any in-flight votes).
-- **Rejoin UX:** if you're already a player in a game, the link should drop you straight into
-  it instead of re-asking nickname/character.
-- **Join in progress:** currently blocked ("already started"). Future: let latecomers wait and
-  join the next game (the room already returns to a lobby between games).
+- ✅ **Presence heartbeat:** each client writes `player.lastSeen` every 8s (+ on tab refocus).
+  A player shows a **"Disconnected"** tag once their heartbeat is >20s stale (lobby, turn order,
+  and voting candidates) — visible, but never auto-kicked.
+- ✅ **Host migration:** if the host's heartbeat goes stale >45s, every other client
+  deterministically computes the same backup (lowest uid among currently-fresh non-host players)
+  and only that one promotes itself via the existing `promoteHost`. No freeze if the host vanishes.
+  (Explicit host **leave** already migrated leadership immediately, pre-dating this pass.)
+- ✅ **Host "reveal now" override:** during voting, the host can force the tally without waiting
+  for stragglers — `revealVotes` never required unanimous votes, it just needed a button.
+- ✅ **Auto-resume:** the device remembers its last game (`localStorage`); reopening the app
+  drops you straight back into the lobby/game instead of showing the home screen, and clears
+  itself if the game is gone or you're no longer a player (kicked, etc.). Verified via a
+  cold-load redirect and the "kicked → cleared → stays home" case.
+- ✅ **Kicked mid-game:** the game backend already removed a kicked/left player from
+  `aliveIds`/`turnOrder`/`candidates` and their in-flight vote (pre-dating this pass); the game
+  screen now also notices it's missing from the player list and bounces to the lobby.
+
+**Remaining, lower-priority:**
+- **Mid-game kick UI:** the backend cleanup for kicking already works, but there's no kick button
+  on the game screen itself yet (only in the lobby) — a host who needs to remove someone mid-round
+  has to wait for the round to end.
+- **Rejoin UX polish:** if you're already a player, the join link still asks for nickname/character
+  again before dropping you in, rather than recognizing you immediately.
+- **Join in progress:** still blocked ("already started"). Future: let latecomers wait and join
+  the next game (the room already returns to a lobby between games).
 
 ## 10. Future features backlog
 

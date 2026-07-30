@@ -9,12 +9,14 @@ import {
   castGuess,
   castVote,
   continueAfterReveal,
+  forgetGame,
   openVoting,
   resolveGuess,
   resolveVote,
   revealVotes,
   startGame,
 } from '../game/gameService'
+import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
 import type { Player, Round, Secret, Vote } from '../game/types'
 
 type PlayerMap = Map<string, Player>
@@ -92,10 +94,12 @@ function PlayerRow({
   player,
   isYou,
   index,
+  disconnected,
 }: {
   player: Player
   isYou: boolean
   index?: number
+  disconnected?: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -114,6 +118,11 @@ function PlayerRow({
           </span>
         )}
       </span>
+      {disconnected && (
+        <span className="rounded-full bg-content-muted/10 px-2 py-0.5 text-xs font-bold text-content-muted">
+          {t('lobby.disconnected')}
+        </span>
+      )}
     </div>
   )
 }
@@ -150,6 +159,7 @@ function CluePhase({
   uid,
   secret,
   isHost,
+  staleIds,
 }: {
   pin: string
   round: Round
@@ -157,6 +167,7 @@ function CluePhase({
   uid: string
   secret: Secret | null
   isHost: boolean
+  staleIds: Set<string>
 }) {
   const { t } = useTranslation()
   const order = round.turnOrder
@@ -178,7 +189,12 @@ function CluePhase({
       <ol className="mt-2 flex flex-col gap-2">
         {order.map((p, i) => (
           <li key={p.id}>
-            <PlayerRow player={p} isYou={p.id === uid} index={i + 1} />
+            <PlayerRow
+              player={p}
+              isYou={p.id === uid}
+              index={i + 1}
+              disconnected={staleIds.has(p.id)}
+            />
           </li>
         ))}
       </ol>
@@ -199,12 +215,16 @@ function VotingPhase({
   byId,
   uid,
   votes,
+  isHost,
+  staleIds,
 }: {
   pin: string
   round: Round
   byId: PlayerMap
   uid: string
   votes: Vote[]
+  isHost: boolean
+  staleIds: Set<string>
 }) {
   const { t } = useTranslation()
   const meAlive = round.aliveIds.includes(uid)
@@ -212,6 +232,7 @@ function VotingPhase({
   const candidates = (round.candidates ?? round.aliveIds).filter(
     (id) => id !== uid,
   )
+  const allVoted = votes.length >= round.aliveIds.length
   const progress = `${votes.length}/${round.aliveIds.length}`
 
   return (
@@ -247,6 +268,11 @@ function VotingPhase({
               >
                 <span className="text-2xl">{p.character}</span>
                 <span className="flex-1 font-bold text-content">{p.name}</span>
+                {staleIds.has(id) && (
+                  <span className="rounded-full bg-content-muted/10 px-2 py-0.5 text-xs font-bold text-content-muted">
+                    {t('lobby.disconnected')}
+                  </span>
+                )}
                 {selected && <span className="text-brand-600">✓</span>}
               </button>
             )
@@ -255,6 +281,17 @@ function VotingPhase({
       ) : (
         <div className="mt-6 rounded-2xl border-2 border-dashed border-line p-6 text-center text-content-muted">
           {t('game.youAreOut')}
+        </div>
+      )}
+
+      {isHost && !allVoted && (
+        <div className="mt-auto pt-6 text-center">
+          <p className="mb-2 text-xs text-content-muted">
+            {t('game.revealNowHint')}
+          </p>
+          <Button variant="secondary" fullWidth onClick={() => revealVotes(pin)}>
+            {t('game.revealNow')}
+          </Button>
         </div>
       )}
     </div>
@@ -560,6 +597,13 @@ export function GamePage() {
   const uid = user?.uid ?? ''
   const isHost = game?.hostId === uid
   const round = game?.round ?? null
+  const me = players.find((p) => p.id === uid)
+
+  usePresence(pin, user?.uid, game, players)
+  const now = useNow()
+  const staleIds = new Set(
+    players.filter((p) => isStale(p.lastSeen, now, STALE_AFTER_MS)).map((p) => p.id),
+  )
 
   // Follow the game back to the lobby when it ends there.
   useEffect(() => {
@@ -567,6 +611,14 @@ export function GamePage() {
       navigate(`/lobby/${pin}`, { replace: true })
     }
   }, [loading, game, pin, navigate])
+
+  // Kicked mid-game (or the room vanished under us) → forget it and bounce out.
+  useEffect(() => {
+    if (!loading && game && user && !me) {
+      forgetGame()
+      navigate(`/lobby/${pin}`, { replace: true })
+    }
+  }, [loading, game, user, me, pin, navigate])
 
   // The host drives the reveal once everyone has voted.
   useEffect(() => {
@@ -612,11 +664,20 @@ export function GamePage() {
           uid={uid}
           secret={secret}
           isHost={isHost}
+          staleIds={staleIds}
         />
       )
     case 'voting':
       return (
-        <VotingPhase pin={pin} round={round} byId={byId} uid={uid} votes={votes} />
+        <VotingPhase
+          pin={pin}
+          round={round}
+          byId={byId}
+          uid={uid}
+          votes={votes}
+          isHost={isHost}
+          staleIds={staleIds}
+        />
       )
     case 'tally':
       return <TallyPhase pin={pin} byId={byId} votes={votes} isHost={isHost} />

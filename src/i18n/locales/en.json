@@ -87,7 +87,8 @@
     "needMore": "Need at least {{count}} players to start.",
     "startGame": "Start game",
     "hostNote": "The host starts the game once everyone is in.",
-    "leave": "Leave game"
+    "leave": "Leave game",
+    "disconnected": "Disconnected"
   },
   "game": {
     "dealing": "Dealing the words…",
@@ -108,6 +109,8 @@
     "revoteHint": "It was a tie — revote between the tied players.",
     "votedCount": "{{progress}} voted",
     "youAreOut": "You're out — sit back and watch.",
+    "revealNow": "Reveal votes now",
+    "revealNowHint": "Don't wait for stragglers — count what's in.",
     "tallyTitle": "The votes are in!",
     "tallyHint": "Here's who voted for whom.",
     "continue": "Continue",

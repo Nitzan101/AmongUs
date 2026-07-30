@@ -9,7 +9,8 @@
       "PowerShell($gh = \\(Get-Command gh -ErrorAction SilentlyContinue\\); if \\($gh\\) { \"gh CLI installed: $\\($gh.Source\\)\"; gh auth status } else { \"gh CLI NOT installed\" })",
       "Bash(git remote *)",
       "Bash(git push *)",
-      "PowerShell(npm run build 2>&1)"
+      "PowerShell(npm run build 2>&1)",
+      "PowerShell(npm run lint 2>&1)"
     ]
   }
 }

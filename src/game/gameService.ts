@@ -6,6 +6,7 @@ import {
   getDocs,
   increment,
   onSnapshot,
+  serverTimestamp,
   setDoc,
   updateDoc,
   writeBatch,
@@ -63,6 +64,58 @@ const votesRef = (pin: string) => collection(requireDb().db, 'games', pin, 'vote
 const voteRef = (pin: string, voterId: string) =>
   doc(requireDb().db, 'games', pin, 'votes', voterId)
 
+const LAST_GAME_KEY = 'imposter:lastPin'
+
+function rememberGame(pin: string): void {
+  try {
+    localStorage.setItem(LAST_GAME_KEY, pin)
+  } catch {
+    /* storage unavailable — resume just won't work on this device */
+  }
+}
+
+/** Forget the remembered game (called on explicit leave, or once we notice we're no longer in it). */
+export function forgetGame(): void {
+  try {
+    localStorage.removeItem(LAST_GAME_KEY)
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function getRememberedGame(): string | null {
+  try {
+    return localStorage.getItem(LAST_GAME_KEY)
+  } catch {
+    return null
+  }
+}
+
+/** Synchronous check so the UI can skip a loading flash when there's nothing to resume. */
+export function hasRememberedGame(): boolean {
+  return getRememberedGame() !== null
+}
+
+/** If this device was mid-game, find it so the app can drop back into it. */
+export async function findMyActiveGame(
+  uid: string,
+): Promise<{ pin: string; game: Game } | null> {
+  const pin = getRememberedGame()
+  if (!pin) return null
+
+  const gSnap = await getDoc(gameRef(pin))
+  if (!gSnap.exists()) {
+    forgetGame()
+    return null
+  }
+  const pSnap = await getDoc(playerRef(pin, uid))
+  if (!pSnap.exists()) {
+    forgetGame()
+    return null
+  }
+  return { pin, game: gSnap.data() as Game }
+}
+
 /** Create a new game room, add the host as the first player, return the PIN. */
 export async function createGame(
   options: GameOptions,
@@ -86,15 +139,17 @@ export async function createGame(
   }
   await setDoc(gameRef(pin), game)
 
-  const player: Player = {
+  const player = {
     id: host.uid,
     name: host.name,
     character: host.character,
     isHost: true,
     score: 0,
+    lastSeen: serverTimestamp(),
   }
   await setDoc(playerRef(pin, host.uid), player)
 
+  rememberGame(pin)
   return pin
 }
 
@@ -121,14 +176,24 @@ export async function joinGame(
   )
   if (clash) throw new GameError('name-taken')
 
-  const player: Player = {
+  const player = {
     id: uid,
     name: name.trim(),
     character,
     isHost: false,
     score: 0,
+    lastSeen: serverTimestamp(),
   }
   await setDoc(playerRef(pin, uid), player)
+  rememberGame(pin)
+}
+
+/** Update this player's "still here" timestamp. Silently ignored if they've left. */
+export async function touchPresence(pin: string, uid: string): Promise<void> {
+  requireDb()
+  await updateDoc(playerRef(pin, uid), { lastSeen: serverTimestamp() }).catch(
+    () => {},
+  )
 }
 
 /** Live updates to the game document. */
@@ -161,12 +226,75 @@ export function subscribePlayers(
 export async function kickPlayer(pin: string, playerId: string): Promise<void> {
   requireDb()
   await deleteDoc(playerRef(pin, playerId))
+  await removeFromRound(pin, playerId)
 }
 
-/** Leave a game (removes your own player doc). */
+/**
+ * Leave a game. If the leaver was the host, leadership migrates to another
+ * player so the game can still be driven; the room is deleted if nobody is left.
+ */
 export async function leaveGame(pin: string, uid: string): Promise<void> {
   requireDb()
   await deleteDoc(playerRef(pin, uid))
+  forgetGame()
+
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) return
+  const game = snap.data() as Game
+
+  const remaining = (await getDocs(playersRef(pin))).docs
+  if (remaining.length === 0) {
+    await deleteDoc(gameRef(pin))
+    return
+  }
+
+  if (game.hostId === uid) {
+    await promoteHost(pin, remaining[0].id)
+  }
+  await removeFromRound(pin, uid)
+}
+
+/** Hand leadership to another player (host migration). */
+export async function promoteHost(
+  pin: string,
+  newHostId: string,
+): Promise<void> {
+  const { db } = requireDb()
+  const players = await getDocs(playersRef(pin))
+  const batch = writeBatch(db)
+  players.docs.forEach((d) => {
+    const shouldBeHost = d.id === newHostId
+    if ((d.data() as Player).isHost !== shouldBeHost) {
+      batch.update(d.ref, { isHost: shouldBeHost })
+    }
+  })
+  batch.update(gameRef(pin), { hostId: newHostId })
+  await batch.commit()
+}
+
+/** Drop a departed player from the active round so play can continue. */
+async function removeFromRound(pin: string, uid: string): Promise<void> {
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) return
+  const game = snap.data() as Game
+  const round = game.round
+  if (game.status !== 'playing' || !round) return
+
+  const updates: Record<string, unknown> = {}
+  if (round.aliveIds.includes(uid)) {
+    updates['round.aliveIds'] = round.aliveIds.filter((id) => id !== uid)
+  }
+  if (round.turnOrder.includes(uid)) {
+    updates['round.turnOrder'] = round.turnOrder.filter((id) => id !== uid)
+  }
+  if (round.candidates?.includes(uid)) {
+    updates['round.candidates'] = round.candidates.filter((id) => id !== uid)
+  }
+  if (Object.keys(updates).length > 0) {
+    await updateDoc(gameRef(pin), updates)
+  }
+  // Their vote no longer counts toward "everyone voted".
+  await deleteDoc(voteRef(pin, uid)).catch(() => {})
 }
 
 /**

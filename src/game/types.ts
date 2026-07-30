@@ -1,3 +1,4 @@
+import type { Timestamp } from 'firebase/firestore'
 import type { Difficulty } from '../words'
 import type { Language } from '../i18n'
 
@@ -83,6 +84,8 @@ export interface Player {
   character: string
   isHost: boolean
   score: number
+  /** Updated periodically while the app is open; drives the "disconnected" tag. */
+  lastSeen?: Timestamp | null
 }
 
 /**

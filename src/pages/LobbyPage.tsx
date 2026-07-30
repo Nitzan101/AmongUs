@@ -4,7 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../auth/AuthContext'
 import { useGame } from '../game/useGame'
-import { kickPlayer, leaveGame, startGame } from '../game/gameService'
+import { forgetGame, kickPlayer, leaveGame, startGame } from '../game/gameService'
+import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
 
 const MIN_PLAYERS = 4
 
@@ -15,6 +16,10 @@ export function LobbyPage() {
   const { user } = useAuth()
   const { game, players, loading } = useGame(pin)
   const [copied, setCopied] = useState(false)
+  const me = players.find((p) => p.id === user?.uid)
+
+  usePresence(pin, user?.uid, game, players)
+  const now = useNow()
 
   // When the host starts the game, everyone in the lobby follows into it.
   useEffect(() => {
@@ -22,6 +27,11 @@ export function LobbyPage() {
       navigate(`/game/${pin}`, { replace: true })
     }
   }, [game?.status, pin, navigate])
+
+  // If we're no longer a player here (kicked, or the room is gone), forget it.
+  useEffect(() => {
+    if (!loading && game && !me) forgetGame()
+  }, [loading, game, me])
 
   if (loading) {
     return (
@@ -42,7 +52,6 @@ export function LobbyPage() {
   }
 
   const isHost = game.hostId === user?.uid
-  const me = players.find((p) => p.id === user?.uid)
 
   if (game.status === 'playing') {
     // The effect above redirects into the game; show a brief hand-off.
@@ -127,6 +136,11 @@ export function LobbyPage() {
                 </span>
               )}
             </span>
+            {isStale(p.lastSeen, now, STALE_AFTER_MS) && (
+              <span className="rounded-full bg-content-muted/10 px-2 py-0.5 text-xs font-bold text-content-muted">
+                {t('lobby.disconnected')}
+              </span>
+            )}
             {p.isHost && (
               <span className="rounded-full bg-sunny-400/20 px-2 py-0.5 text-xs font-bold text-sunny-500">
                 {t('lobby.host')}
