@@ -4,7 +4,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../auth/AuthContext'
 import { useGame } from '../game/useGame'
-import { forgetGame, kickPlayer, leaveGame, startGame } from '../game/gameService'
+import {
+  closeGame,
+  forgetGame,
+  kickPlayer,
+  leaveGame,
+  startGame,
+} from '../game/gameService'
+import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
 
 const MIN_PLAYERS = 4
@@ -16,6 +23,7 @@ export function LobbyPage() {
   const { user } = useAuth()
   const { game, players, loading } = useGame(pin)
   const [copied, setCopied] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const me = players.find((p) => p.id === user?.uid)
 
   usePresence(pin, user?.uid, game, players)
@@ -28,10 +36,16 @@ export function LobbyPage() {
     }
   }, [game?.status, pin, navigate])
 
-  // If we're no longer a player here (kicked, or the room is gone), forget it.
+  // If we're no longer a player here (kicked, or the host closed the room), forget it.
   useEffect(() => {
-    if (!loading && game && !me) forgetGame()
-  }, [loading, game, me])
+    if (loading) return
+    if (!game) {
+      forgetGame()
+      navigate('/', { replace: true })
+    } else if (!me) {
+      forgetGame()
+    }
+  }, [loading, game, me, navigate])
 
   if (loading) {
     return (
@@ -84,8 +98,13 @@ export function LobbyPage() {
     }
   }
 
-  async function handleLeave() {
-    if (user) await leaveGame(pin, user.uid)
+  async function handleLeave(newHostId?: string) {
+    if (user) await leaveGame(pin, user.uid, newHostId)
+    navigate('/')
+  }
+
+  async function handleCloseGame() {
+    await closeGame(pin)
     navigate('/')
   }
 
@@ -182,10 +201,25 @@ export function LobbyPage() {
             {t('lobby.hostNote')}
           </p>
         )}
-        <Button variant="ghost" fullWidth className="mt-2" onClick={handleLeave}>
+        <Button
+          variant="ghost"
+          fullWidth
+          className="mt-2"
+          onClick={() => setLeaving(true)}
+        >
           {t('lobby.leave')}
         </Button>
       </div>
+
+      {leaving && (
+        <LeaveGameDialog
+          isHost={isHost}
+          others={players.filter((p) => p.id !== user?.uid)}
+          onCancel={() => setLeaving(false)}
+          onLeave={handleLeave}
+          onClose={handleCloseGame}
+        />
+      )}
     </div>
   )
 }

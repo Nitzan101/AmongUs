@@ -8,10 +8,12 @@ import {
   backToLobby,
   castGuess,
   castVote,
+  closeGame,
   continueAfterReveal,
   continueToScoreboard,
   forgetGame,
   GameError,
+  leaveGame,
   openVoting,
   resolveGuess,
   resolveGuessReview,
@@ -20,6 +22,7 @@ import {
   startGame,
   submitClue,
 } from '../game/gameService'
+import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
 import type { Clue, Player, Round, Secret, Vote } from '../game/types'
 
@@ -976,6 +979,17 @@ export function GamePage() {
   const me = players.find((p) => p.id === uid)
   const isFullVirtual = game?.mode === 'full'
   const clues = useClues(pin, isFullVirtual)
+  const [leaving, setLeaving] = useState(false)
+
+  async function handleLeave(newHostId?: string) {
+    if (user) await leaveGame(pin, user.uid, newHostId)
+    navigate('/')
+  }
+
+  async function handleCloseGame() {
+    await closeGame(pin)
+    navigate('/')
+  }
 
   usePresence(pin, user?.uid, game, players)
   const now = useNow()
@@ -983,9 +997,14 @@ export function GamePage() {
     players.filter((p) => isStale(p.lastSeen, now, STALE_AFTER_MS)).map((p) => p.id),
   )
 
-  // Follow the game back to the lobby when it ends there.
+  // Follow the game back to the lobby when it ends there — or home if the host
+  // closed the room entirely.
   useEffect(() => {
-    if (!loading && (!game || game.status === 'lobby')) {
+    if (loading) return
+    if (!game) {
+      forgetGame()
+      navigate('/', { replace: true })
+    } else if (game.status === 'lobby') {
       navigate(`/lobby/${pin}`, { replace: true })
     }
   }, [loading, game, pin, navigate])
@@ -1041,9 +1060,10 @@ export function GamePage() {
 
   const byId: PlayerMap = new Map(players.map((p) => [p.id, p]))
 
+  let phaseView: React.ReactNode = null
   switch (round.phase) {
     case 'clues':
-      return (
+      phaseView = (
         <CluePhase
           pin={pin}
           round={round}
@@ -1056,8 +1076,9 @@ export function GamePage() {
           clues={clues}
         />
       )
+      break
     case 'voting':
-      return (
+      phaseView = (
         <VotingPhase
           pin={pin}
           round={round}
@@ -1070,17 +1091,24 @@ export function GamePage() {
           clues={clues}
         />
       )
+      break
     case 'tally':
-      return <TallyPhase pin={pin} byId={byId} votes={votes} isHost={isHost} />
-
+      phaseView = (
+        <TallyPhase pin={pin} byId={byId} votes={votes} isHost={isHost} />
+      )
+      break
     case 'reveal':
-      return <RevealPhase pin={pin} round={round} byId={byId} isHost={isHost} />
+      phaseView = (
+        <RevealPhase pin={pin} round={round} byId={byId} isHost={isHost} />
+      )
+      break
     case 'guess':
-      return (
+      phaseView = (
         <GuessPhase pin={pin} round={round} secret={secret} isHost={isHost} />
       )
+      break
     case 'recap':
-      return (
+      phaseView = (
         <RecapPhase
           pin={pin}
           round={round}
@@ -1089,9 +1117,33 @@ export function GamePage() {
           isHost={isHost}
         />
       )
+      break
     case 'result':
-      return <ResultPhase pin={pin} players={players} isHost={isHost} />
-    default:
-      return null
+      phaseView = <ResultPhase pin={pin} players={players} isHost={isHost} />
+      break
   }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      {phaseView}
+
+      <button
+        type="button"
+        onClick={() => setLeaving(true)}
+        className="mt-3 py-1 text-center text-sm text-content-muted hover:text-content"
+      >
+        {t('lobby.leave')}
+      </button>
+
+      {leaving && (
+        <LeaveGameDialog
+          isHost={isHost}
+          others={players.filter((p) => p.id !== uid)}
+          onCancel={() => setLeaving(false)}
+          onLeave={handleLeave}
+          onClose={handleCloseGame}
+        />
+      )}
+    </div>
+  )
 }

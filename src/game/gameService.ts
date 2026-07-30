@@ -246,10 +246,15 @@ export async function kickPlayer(pin: string, playerId: string): Promise<void> {
 }
 
 /**
- * Leave a game. If the leaver was the host, leadership migrates to another
- * player so the game can still be driven; the room is deleted if nobody is left.
+ * Leave a game. If the leaver was the host, leadership passes to `newHostId`
+ * when given (the host's own choice) or to whoever remains, so the game can
+ * still be driven; the room is deleted if nobody is left.
  */
-export async function leaveGame(pin: string, uid: string): Promise<void> {
+export async function leaveGame(
+  pin: string,
+  uid: string,
+  newHostId?: string,
+): Promise<void> {
   requireDb()
   await deleteDoc(playerRef(pin, uid))
   forgetGame()
@@ -260,14 +265,35 @@ export async function leaveGame(pin: string, uid: string): Promise<void> {
 
   const remaining = (await getDocs(playersRef(pin))).docs
   if (remaining.length === 0) {
-    await deleteDoc(gameRef(pin))
+    await closeGame(pin)
     return
   }
 
   if (game.hostId === uid) {
-    await promoteHost(pin, remaining[0].id)
+    const successor =
+      newHostId && remaining.some((d) => d.id === newHostId)
+        ? newHostId
+        : remaining[0].id
+    await promoteHost(pin, successor)
   }
   await removeFromRound(pin, uid)
+}
+
+/**
+ * End the game for everyone (host action): deletes the room and everything in
+ * it, so every player's app drops back to the home screen.
+ */
+export async function closeGame(pin: string): Promise<void> {
+  const { db } = requireDb()
+  for (const sub of ['players', 'secrets', 'votes', 'clues']) {
+    const snap = await getDocs(collection(db, 'games', pin, sub))
+    if (snap.empty) continue
+    const batch = writeBatch(db)
+    snap.docs.forEach((d) => batch.delete(d.ref))
+    await batch.commit()
+  }
+  await deleteDoc(gameRef(pin))
+  forgetGame()
 }
 
 /** Hand leadership to another player (host migration). */

@@ -54,6 +54,16 @@
     "identityTitle": "Who are you?",
     "identitySubtitle": "Pick your name and character for this game."
   },
+  "leave": {
+    "title": "Leave this game?",
+    "playerBody": "You'll be removed from the game. You can rejoin with the PIN if it's still in the lobby.",
+    "lastPlayerBody": "You're the only one left, so the game will close.",
+    "hostBody": "You're the host — choose what happens to the game.",
+    "chooseSuccessor": "Pass hosting to",
+    "passAndLeave": "Pass hosting & leave",
+    "closeGame": "Close the game for everyone",
+    "confirm": "Leave game"
+  },
   "profile": {
     "title": "Your profile",
     "subtitle": "These pre-fill when you join a game — you can always change them per game.",

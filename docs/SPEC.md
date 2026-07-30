@@ -152,6 +152,20 @@ and may mix languages. Already true for dealt words today. Future refinement (bu
 an explicit "word language" picker at game creation, separate from the host's UI language, for
 mixed groups.
 
+## 14. Leaving a game
+
+- **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active
+  game (previously it only existed in the lobby, so a mid-game player was stuck).
+- **A regular player** confirms and is removed; they're also dropped from the round's `aliveIds`,
+  `turnOrder`, `candidates`, and any in-flight vote, so play continues cleanly.
+- **The host must decide what happens to the game** before leaving:
+  - **Pass hosting & leave** — pick *which* player takes over (previously the app silently picked
+    whoever came first), then leave.
+  - **Close the game for everyone** — `closeGame` deletes the room and every subcollection
+    (players, secrets, votes, clues) and clears the remembered PIN, so all players' apps drop back
+    to the home screen instead of auto-resuming into a dead game.
+- If the last player leaves, the room closes automatically.
+
 ## 13. Player identity & profiles
 
 Everyone picks their own name and character — the host is no longer auto-named from their account.
