@@ -636,6 +636,12 @@ export async function castGuess(pin: string, text: string): Promise<void> {
   await updateDoc(gameRef(pin), { 'round.guessText': text })
 }
 
+/** Host override: move on without waiting for the guess (counts as wrong). */
+export async function skipGuess(pin: string): Promise<void> {
+  requireDb()
+  await finalizeGame(pin, 'crew-wins', false)
+}
+
 /**
  * Resolve the imposter's guess (host). An exact match or a small typo is
  * accepted automatically; anything else (including a fair synonym) is shown

@@ -176,6 +176,8 @@
     "guessPlaceholder": "המילה האמיתית…",
     "submitGuess": "שליחת ניחוש",
     "imposterGuessing": "המתחזה מנחש את המילה…",
+    "skipGuess": "דילוג על הניחוש",
+    "skipGuessHint": "לוקח יותר מדי זמן? אפשר להמשיך בלי לחכות.",
     "guessReviewTitle": "מספיק קרוב?",
     "guessReviewHint": "הניחוש לא תאם בדיוק — המארח מחליט אם הוא נחשב.",
     "guessReviewCorrect": "נכון",

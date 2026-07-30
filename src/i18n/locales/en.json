@@ -176,6 +176,8 @@
     "guessPlaceholder": "The real word…",
     "submitGuess": "Submit guess",
     "imposterGuessing": "The imposter is guessing the word…",
+    "skipGuess": "Skip the guess",
+    "skipGuessHint": "Taking too long? Move on without waiting.",
     "guessReviewTitle": "Close enough?",
     "guessReviewHint": "That guess didn't match exactly — the host decides if it counts.",
     "guessReviewCorrect": "Correct",

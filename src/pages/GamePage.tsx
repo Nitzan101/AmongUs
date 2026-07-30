@@ -18,6 +18,7 @@ import {
   resolveGuess,
   resolveGuessReview,
   resolveVote,
+  skipGuess,
   revealVotes,
   startGame,
   submitClue,
@@ -737,13 +738,26 @@ function GuessPhase({
 
   // Everyone else (and the imposter after submitting) waits for the result.
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-      <div className="animate-pulse text-5xl">🎯</div>
-      <h1 className="text-2xl font-black text-content">
-        {t('game.imposterGuessing')}
-      </h1>
-      {!isHost && (
-        <p className="text-sm text-content-muted">{t('game.waitingHost')}</p>
+    <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+        <div className="animate-pulse text-5xl">🎯</div>
+        <h1 className="text-2xl font-black text-content">
+          {t('game.imposterGuessing')}
+        </h1>
+        {!isHost && (
+          <p className="text-sm text-content-muted">{t('game.waitingHost')}</p>
+        )}
+      </div>
+
+      {isHost && !amImposter && !submitted && (
+        <div className="pt-6 text-center">
+          <p className="mb-2 text-xs text-content-muted">
+            {t('game.skipGuessHint')}
+          </p>
+          <Button variant="secondary" fullWidth onClick={() => skipGuess(pin)}>
+            {t('game.skipGuess')}
+          </Button>
+        </div>
       )}
     </div>
   )
