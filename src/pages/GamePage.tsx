@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../auth/AuthContext'
-import { useGame, useSecret, useVotes } from '../game/useGame'
+import { useClues, useGame, useSecret, useVotes } from '../game/useGame'
 import {
   backToLobby,
   castGuess,
@@ -11,15 +11,17 @@ import {
   continueAfterReveal,
   continueToScoreboard,
   forgetGame,
+  GameError,
   openVoting,
   resolveGuess,
   resolveGuessReview,
   resolveVote,
   revealVotes,
   startGame,
+  submitClue,
 } from '../game/gameService'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
-import type { Player, Round, Secret, Vote } from '../game/types'
+import type { Clue, Player, Round, Secret, Vote } from '../game/types'
 
 type PlayerMap = Map<string, Player>
 
@@ -170,6 +172,130 @@ function HostOrWait({
   )
 }
 
+/** The running list of words typed this game (full-virtual mode). */
+function ClueFeed({
+  clues,
+  byId,
+  currentRound,
+}: {
+  clues: Clue[]
+  byId: PlayerMap
+  currentRound: number
+}) {
+  const { t } = useTranslation()
+
+  if (clues.length === 0) {
+    return (
+      <div className="rounded-2xl border-2 border-dashed border-line p-5 text-center text-sm text-content-muted">
+        {t('game.noCluesYet')}
+      </div>
+    )
+  }
+
+  const rounds = [...new Set(clues.map((c) => c.round))].sort((a, b) => a - b)
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rounds.map((roundNo) => (
+        <div key={roundNo}>
+          <div className="px-1 text-xs font-bold uppercase tracking-wide text-content-muted">
+            {t('game.roundLabel', { number: roundNo })}
+            {roundNo === currentRound && ` · ${t('game.currentRound')}`}
+          </div>
+          <div className="mt-1 flex flex-col gap-1.5">
+            {clues
+              .filter((c) => c.round === roundNo)
+              .map((c) => {
+                const p = byId.get(c.playerId)
+                return (
+                  <div
+                    key={`${c.round}_${c.playerId}`}
+                    className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2"
+                  >
+                    <span className="text-xl">{p?.character ?? '❓'}</span>
+                    <span className="text-sm text-content-muted">
+                      {p?.name ?? '—'}
+                    </span>
+                    <span className="ms-auto font-black text-content">
+                      {c.word}
+                    </span>
+                  </div>
+                )
+              })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Type-your-word input, shown only when it's your turn (full-virtual mode). */
+function ClueInput({
+  pin,
+  uid,
+  isMyTurn,
+  waitingFor,
+}: {
+  pin: string
+  uid: string
+  isMyTurn: boolean
+  waitingFor: Player | undefined
+}) {
+  const { t } = useTranslation()
+  const [word, setWord] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  if (!isMyTurn) {
+    return (
+      <div className="rounded-2xl border border-line bg-surface-raised p-4 text-center text-sm text-content-muted">
+        {waitingFor
+          ? t('game.waitingForClue', { name: waitingFor.name })
+          : t('game.waitingHostVote')}
+      </div>
+    )
+  }
+
+  async function submit() {
+    setError(null)
+    setBusy(true)
+    try {
+      await submitClue(pin, uid, word)
+      setWord('')
+    } catch (err) {
+      const code = err instanceof GameError ? err.code : 'generic'
+      setError(t(`game.clueErrors.${code}`, t('game.clueErrors.generic')))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-brand-500 bg-brand-50 p-4 dark:bg-brand-500/10">
+      <div className="text-sm font-bold text-brand-600">
+        {t('game.yourTurnToType')}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={word}
+          onChange={(e) => setWord(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && word.trim() && !busy) submit()
+          }}
+          placeholder={t('game.cluePlaceholder')}
+          className="min-w-0 flex-1 rounded-xl border-2 border-line bg-surface-raised px-3 py-2 text-content outline-none focus:border-brand-500"
+        />
+        <Button disabled={!word.trim() || busy} onClick={submit}>
+          {t('game.sendClue')}
+        </Button>
+      </div>
+      {error && (
+        <p className="mt-2 text-sm font-medium text-accent-600">{error}</p>
+      )}
+    </div>
+  )
+}
+
 function CluePhase({
   pin,
   round,
@@ -178,6 +304,8 @@ function CluePhase({
   secret,
   isHost,
   staleIds,
+  isFullVirtual,
+  clues,
 }: {
   pin: string
   round: Round
@@ -186,6 +314,8 @@ function CluePhase({
   secret: Secret | null
   isHost: boolean
   staleIds: Set<string>
+  isFullVirtual: boolean
+  clues: Clue[]
 }) {
   const { t } = useTranslation()
   const iAmEliminated = !round.aliveIds.includes(uid)
@@ -193,10 +323,19 @@ function CluePhase({
     .map((id) => byId.get(id))
     .filter((p): p is Player => Boolean(p))
 
+  // Whose turn it is in full-virtual mode: the next alive player in turn order
+  // who hasn't submitted a clue this round.
+  const aliveOrder = round.turnOrder.filter((id) => round.aliveIds.includes(id))
+  const thisRoundCount = clues.filter((c) => c.round === round.number).length
+  const currentTurnId = aliveOrder[thisRoundCount]
+  const allSubmitted = thisRoundCount >= aliveOrder.length
+
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col pb-4">
       <h1 className="text-2xl font-black text-content">{t('game.cluesTitle')}</h1>
-      <p className="mt-1 text-sm text-content-muted">{t('game.cluesHint')}</p>
+      <p className="mt-1 text-sm text-content-muted">
+        {isFullVirtual ? t('game.cluesHintTyped') : t('game.cluesHint')}
+      </p>
 
       <div className="mt-4">
         {iAmEliminated ? (
@@ -208,29 +347,65 @@ function CluePhase({
         )}
       </div>
 
-      <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
-        {t('game.turnOrder')}
-      </h2>
-      <ol className="mt-2 flex flex-col gap-2">
-        {order.map((p, i) => (
-          <li key={p.id}>
-            <PlayerRow
-              player={p}
-              isYou={p.id === uid}
-              index={i + 1}
-              disconnected={staleIds.has(p.id)}
-              eliminated={!round.aliveIds.includes(p.id)}
-            />
-          </li>
-        ))}
-      </ol>
+      {isFullVirtual ? (
+        <>
+          <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
+            {t('game.wordsSaid')}
+          </h2>
+          <div className="mt-2">
+            <ClueFeed clues={clues} byId={byId} currentRound={round.number} />
+          </div>
 
-      <HostOrWait
-        isHost={isHost}
-        label={t('game.finishToVote')}
-        onClick={() => openVoting(pin)}
-        waitKey="game.waitingHostVote"
-      />
+          {!iAmEliminated && !allSubmitted && (
+            <div className="mt-4">
+              <ClueInput
+                pin={pin}
+                uid={uid}
+                isMyTurn={currentTurnId === uid}
+                waitingFor={currentTurnId ? byId.get(currentTurnId) : undefined}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
+            {t('game.turnOrder')}
+          </h2>
+          <ol className="mt-2 flex flex-col gap-2">
+            {order.map((p, i) => (
+              <li key={p.id}>
+                <PlayerRow
+                  player={p}
+                  isYou={p.id === uid}
+                  index={i + 1}
+                  disconnected={staleIds.has(p.id)}
+                  eliminated={!round.aliveIds.includes(p.id)}
+                />
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+
+      <div className="mt-auto pt-6">
+        {isHost ? (
+          <>
+            {isFullVirtual && !allSubmitted && (
+              <p className="mb-2 text-center text-xs text-content-muted">
+                {t('game.cluesIncompleteHint')}
+              </p>
+            )}
+            <Button size="lg" fullWidth onClick={() => openVoting(pin)}>
+              {t('game.finishToVote')}
+            </Button>
+          </>
+        ) : (
+          <p className="text-center text-sm text-content-muted">
+            {t('game.waitingHostVote')}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -243,6 +418,8 @@ function VotingPhase({
   votes,
   isHost,
   staleIds,
+  isFullVirtual,
+  clues,
 }: {
   pin: string
   round: Round
@@ -251,6 +428,8 @@ function VotingPhase({
   votes: Vote[]
   isHost: boolean
   staleIds: Set<string>
+  isFullVirtual: boolean
+  clues: Clue[]
 }) {
   const { t } = useTranslation()
   const meAlive = round.aliveIds.includes(uid)
@@ -308,6 +487,17 @@ function VotingPhase({
         <div className="mt-6 rounded-2xl border-2 border-dashed border-line p-6 text-center text-content-muted">
           {t('game.youAreOut')}
         </div>
+      )}
+
+      {isFullVirtual && clues.length > 0 && (
+        <details className="mt-4 rounded-2xl border border-line bg-surface-raised p-3">
+          <summary className="cursor-pointer text-sm font-bold text-content-muted">
+            {t('game.wordsSaid')}
+          </summary>
+          <div className="mt-2">
+            <ClueFeed clues={clues} byId={byId} currentRound={round.number} />
+          </div>
+        </details>
       )}
 
       {isHost && !allVoted && (
@@ -784,6 +974,8 @@ export function GamePage() {
   const isHost = game?.hostId === uid
   const round = game?.round ?? null
   const me = players.find((p) => p.id === uid)
+  const isFullVirtual = game?.mode === 'full'
+  const clues = useClues(pin, isFullVirtual)
 
   usePresence(pin, user?.uid, game, players)
   const now = useNow()
@@ -860,6 +1052,8 @@ export function GamePage() {
           secret={secret}
           isHost={isHost}
           staleIds={staleIds}
+          isFullVirtual={isFullVirtual}
+          clues={clues}
         />
       )
     case 'voting':
@@ -872,6 +1066,8 @@ export function GamePage() {
           votes={votes}
           isHost={isHost}
           staleIds={staleIds}
+          isFullVirtual={isFullVirtual}
+          clues={clues}
         />
       )
     case 'tally':

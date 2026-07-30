@@ -77,6 +77,18 @@ export interface ScoreLineItem {
   reasons: ScoreReason[]
 }
 
+/**
+ * One typed clue word in full-virtual mode (stored at games/{pin}/clues/{id},
+ * where id is `r{round}_{playerId}` so each player has one clue per round).
+ */
+export interface Clue {
+  playerId: string
+  word: string
+  round: number
+  /** Position in the round's clue sequence, for stable ordering. */
+  index: number
+}
+
 /** A single cast vote (stored at games/{pin}/votes/{voterId}). */
 export interface Vote {
   voter: string

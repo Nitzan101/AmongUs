@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
+  subscribeClues,
   subscribeGame,
   subscribePlayers,
   subscribeSecret,
   subscribeVotes,
 } from './gameService'
-import type { Game, Player, Secret, Vote } from './types'
+import type { Clue, Game, Player, Secret, Vote } from './types'
 
 /** Subscribe to a game document and its players in real time. */
 export function useGame(pin: string | undefined) {
@@ -62,4 +63,17 @@ export function useVotes(pin: string | undefined) {
   }, [pin])
 
   return votes
+}
+
+/** Subscribe to the typed clues for a game (full-virtual mode). */
+export function useClues(pin: string | undefined, enabled: boolean) {
+  const [clues, setClues] = useState<Clue[]>([])
+
+  useEffect(() => {
+    setClues([])
+    if (!pin || !enabled) return
+    return subscribeClues(pin, setClues)
+  }, [pin, enabled])
+
+  return clues
 }

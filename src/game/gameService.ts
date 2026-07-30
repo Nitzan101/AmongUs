@@ -17,8 +17,9 @@ import { auth, db } from '../lib/firebase'
 import { buildAssignment } from './assignment'
 import { tallyVotes } from './tally'
 import { computeScores } from './scoring'
-import { isCloseMatch } from './textMatch'
+import { isCloseMatch, normalizeGuess } from './textMatch'
 import type {
+  Clue,
   Game,
   GameOptions,
   Outcome,
@@ -64,6 +65,9 @@ const secretRef = (pin: string, uid: string) =>
 const votesRef = (pin: string) => collection(requireDb().db, 'games', pin, 'votes')
 const voteRef = (pin: string, voterId: string) =>
   doc(requireDb().db, 'games', pin, 'votes', voterId)
+const cluesRef = (pin: string) => collection(requireDb().db, 'games', pin, 'clues')
+const clueRef = (pin: string, round: number, playerId: string) =>
+  doc(requireDb().db, 'games', pin, 'clues', `r${round}_${playerId}`)
 
 const LAST_GAME_KEY = 'imposter:lastPin'
 
@@ -321,6 +325,7 @@ export async function startGame(pin: string): Promise<void> {
   })
 
   await clearVotes(pin)
+  await clearClues(pin)
   const batch = writeBatch(db)
   for (const id of playerIds) {
     batch.set(secretRef(pin, id), assignment.secrets[id])
@@ -367,6 +372,78 @@ async function clearVotes(pin: string): Promise<void> {
   const batch = writeBatch(db)
   snap.docs.forEach((d) => batch.delete(d.ref))
   await batch.commit()
+}
+
+async function clearClues(pin: string): Promise<void> {
+  const { db } = requireDb()
+  const snap = await getDocs(cluesRef(pin))
+  if (snap.empty) return
+  const batch = writeBatch(db)
+  snap.docs.forEach((d) => batch.delete(d.ref))
+  await batch.commit()
+}
+
+/** Live updates to the typed clues (full-virtual mode). */
+export function subscribeClues(
+  pin: string,
+  onChange: (clues: Clue[]) => void,
+  onError?: (e: unknown) => void,
+): Unsubscribe {
+  return onSnapshot(
+    cluesRef(pin),
+    (snap) => {
+      const clues = snap.docs.map((d) => d.data() as Clue)
+      clues.sort((a, b) =>
+        a.round === b.round ? a.index - b.index : a.round - b.round,
+      )
+      onChange(clues)
+    },
+    onError,
+  )
+}
+
+/**
+ * Submit your clue word for this round (full-virtual mode). Rejects a word
+ * already said this game, and enforces that it's actually your turn.
+ */
+export async function submitClue(
+  pin: string,
+  playerId: string,
+  word: string,
+): Promise<void> {
+  requireDb()
+  const trimmed = word.trim()
+  if (!trimmed) throw new GameError('empty-word')
+
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) throw new GameError('game-not-found')
+  const round = (snap.data() as Game).round
+  if (!round) throw new GameError('no-round')
+
+  const existing = (await getDocs(cluesRef(pin))).docs.map(
+    (d) => d.data() as Clue,
+  )
+  if (existing.some((c) => normalizeGuess(c.word) === normalizeGuess(trimmed))) {
+    throw new GameError('word-already-said')
+  }
+
+  const thisRound = existing.filter((c) => c.round === round.number)
+  if (thisRound.some((c) => c.playerId === playerId)) {
+    throw new GameError('already-submitted')
+  }
+
+  // Only the player whose turn it is may submit.
+  const order = round.turnOrder.filter((id) => round.aliveIds.includes(id))
+  const expected = order[thisRound.length]
+  if (expected !== playerId) throw new GameError('not-your-turn')
+
+  const clue: Clue = {
+    playerId,
+    word: trimmed,
+    round: round.number,
+    index: thisRound.length,
+  }
+  await setDoc(clueRef(pin, round.number, playerId), clue)
 }
 
 /** Find which of the given players is the imposter (read at game end only). */
@@ -611,5 +688,6 @@ async function finalizeGame(
 export async function backToLobby(pin: string): Promise<void> {
   requireDb()
   await clearVotes(pin)
+  await clearClues(pin)
   await updateDoc(gameRef(pin), { status: 'lobby', round: null })
 }

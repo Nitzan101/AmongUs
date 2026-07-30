@@ -99,7 +99,7 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 4. Lobby — create game with host options, PIN + link join, nicknames & avatars, kick, live list.
 5. Core game (half-virtual) — full loop: words, turn order, voting, reveal, elimination, guess,
    scoring, cumulative scoreboard, next game with rotated order. *(playable!)*
-6. Full-virtual mode — typed words, said-words feed, duplicate blocking.
+6. Full-virtual mode — typed words, said-words feed, duplicate blocking. ✅ *(done)*
 7. Custom word sets — create/edit themed sets with optional per-entry confusing word.
 8. Polish + deploy — PWA install, animations, rules/tutorial screen, public URL.
 
@@ -151,6 +151,25 @@ imposter/confusing-word pairing and the root rule). Custom sets accept free text
 and may mix languages. Already true for dealt words today. Future refinement (built-in bank only):
 an explicit "word language" picker at game creation, separate from the host's UI language, for
 mixed groups.
+
+## 12. Full-virtual mode (Milestone 6)
+
+How typed play differs from the in-person (half-virtual) mode:
+
+- **Clues are typed, not spoken.** Each clue is its own document at
+  `games/{pin}/clues/r{round}_{playerId}`, so concurrent submissions never overwrite each other.
+- **Strict turn order.** Only the next alive player in `turnOrder` who hasn't submitted this
+  round may send a word (`submitClue` throws `not-your-turn` otherwise). Eliminated players are
+  skipped automatically, since the turn sequence is derived from `aliveIds`.
+- **Duplicate blocking is app-enforced and game-wide** — a word already said in *any* round is
+  rejected (`word-already-said`), compared case- and whitespace-insensitively via `normalizeGuess`.
+  Also guards `already-submitted` and `empty-word`.
+- **Said-words feed:** a live list grouped by round (the current round marked "now"), showing each
+  player's avatar, name, and word. Visible during the clue phase, and behind a collapsible
+  `<details>` during voting so players can re-read the clues while deciding.
+- **The input only appears on your turn**; otherwise it shows who everyone is waiting for. The host
+  can still open voting early (with a hint if not everyone has typed).
+- Clues are cleared when a new game is dealt and when returning to the lobby.
 
 ## 11. Post-playtest polish (round two)
 
