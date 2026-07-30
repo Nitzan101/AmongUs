@@ -1,4 +1,4 @@
-import type { GuessRule, Outcome, Scoring, Vote } from './types'
+import type { GuessRule, Outcome, ScoreLineItem, Scoring, Vote } from './types'
 
 export interface ScoreInput {
   preset: Scoring
@@ -16,7 +16,9 @@ export interface ScoreInput {
 }
 
 /**
- * Score one finished game. Returns each player's points for this game.
+ * Score one finished game. Returns each player's points *and* a short,
+ * translatable explanation of where they came from (shown on the recap
+ * screen before the cumulative scoreboard).
  *
  * Let N = players, V = N − 2 (max crew that can be wrongly eliminated before the
  * imposter auto-wins at the final two), and c = crew wrongly eliminated.
@@ -27,7 +29,7 @@ export interface ScoreInput {
  * Guess (crew win only): Final Guess → imposter +2; Steal the Win → crew zeroed,
  * imposter +3.
  */
-export function computeScores(input: ScoreInput): Record<string, number> {
+export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> {
   const {
     preset,
     playerIds,
@@ -45,30 +47,60 @@ export function computeScores(input: ScoreInput): Record<string, number> {
   const crewEliminated = n - aliveIds.length - (crewWins ? 1 : 0)
   const crewIds = playerIds.filter((id) => id !== imposterId)
 
-  const scores: Record<string, number> = {}
-  playerIds.forEach((id) => (scores[id] = 0))
+  const lines: Record<string, ScoreLineItem> = {}
+  playerIds.forEach((id) => (lines[id] = { delta: 0, reasons: [] }))
 
   // Imposter's survival points.
-  scores[imposterId] = 2 * crewEliminated + (crewWins ? 0 : 2)
+  if (crewEliminated > 0) {
+    lines[imposterId].delta += 2 * crewEliminated
+    lines[imposterId].reasons.push({
+      key: 'survivedVotes',
+      params: { count: crewEliminated },
+    })
+  }
+  if (!crewWins) {
+    lines[imposterId].delta += 2
+    lines[imposterId].reasons.push({ key: 'imposterEscaped' })
+  } else if (crewEliminated === 0) {
+    lines[imposterId].reasons.push({ key: 'caughtImmediately' })
+  }
 
   // Crew base points by preset.
   const teamRaceCrew = crewWins ? vMax - crewEliminated : 0
   if (preset === 'survivors') {
-    if (crewWins) {
-      crewIds
-        .filter((id) => aliveIds.includes(id))
-        .forEach((id) => (scores[id] += 3))
-    }
+    crewIds.forEach((id) => {
+      if (crewWins && aliveIds.includes(id)) {
+        lines[id].delta += 3
+        lines[id].reasons.push({ key: 'survivedToTheCatch' })
+      } else if (crewWins) {
+        lines[id].reasons.push({ key: 'eliminatedBeforeCatch' })
+      } else {
+        lines[id].reasons.push({ key: 'imposterGotAway' })
+      }
+    })
   } else {
-    // teamRace and detective share the Team Race base.
-    crewIds.forEach((id) => (scores[id] += teamRaceCrew))
+    crewIds.forEach((id) => {
+      if (crewWins) {
+        lines[id].delta += teamRaceCrew
+        lines[id].reasons.push({ key: 'teamRaceBonus' })
+      } else {
+        lines[id].reasons.push({ key: 'imposterGotAway' })
+      }
+    })
   }
 
   // Detective: reward voting for the true imposter.
   if (preset === 'detective') {
+    const correctVotesByVoter: Record<string, number> = {}
     for (const v of voteHistory) {
-      if (v.target === imposterId && scores[v.voter] != null) {
-        scores[v.voter] += 1
+      if (v.target === imposterId) {
+        correctVotesByVoter[v.voter] = (correctVotesByVoter[v.voter] ?? 0) + 1
+      }
+    }
+    for (const [voter, count] of Object.entries(correctVotesByVoter)) {
+      if (lines[voter]) {
+        lines[voter].delta += count
+        lines[voter].reasons.push({ key: 'detectiveBonus', params: { count } })
       }
     }
   }
@@ -76,12 +108,17 @@ export function computeScores(input: ScoreInput): Record<string, number> {
   // Caught-imposter guess.
   if (crewWins && guessRule !== 'off' && guessCorrect) {
     if (guessRule === 'final') {
-      scores[imposterId] += 2
+      lines[imposterId].delta += 2
+      lines[imposterId].reasons.push({ key: 'guessBonus' })
     } else if (guessRule === 'steal') {
-      crewIds.forEach((id) => (scores[id] = 0))
-      scores[imposterId] += 3
+      crewIds.forEach((id) => {
+        lines[id].delta = 0
+        lines[id].reasons = [{ key: 'guessStolen' }]
+      })
+      lines[imposterId].delta += 3
+      lines[imposterId].reasons.push({ key: 'guessSteal' })
     }
   }
 
-  return scores
+  return lines
 }

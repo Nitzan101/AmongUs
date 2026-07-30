@@ -17,6 +17,7 @@ import { auth, db } from '../lib/firebase'
 import { buildAssignment } from './assignment'
 import { tallyVotes } from './tally'
 import { computeScores } from './scoring'
+import { isCloseMatch } from './textMatch'
 import type {
   Game,
   GameOptions,
@@ -521,11 +522,11 @@ export async function castGuess(pin: string, text: string): Promise<void> {
   await updateDoc(gameRef(pin), { 'round.guessText': text })
 }
 
-function normalize(s: string): string {
-  return s.trim().toLowerCase()
-}
-
-/** Resolve the imposter's guess (host): score it, then finish the game. */
+/**
+ * Resolve the imposter's guess (host). An exact match or a small typo is
+ * accepted automatically; anything else (including a fair synonym) is shown
+ * to the host to judge, rather than auto-rejected.
+ */
 export async function resolveGuess(pin: string): Promise<void> {
   requireDb()
   const snap = await getDoc(gameRef(pin))
@@ -536,8 +537,27 @@ export async function resolveGuess(pin: string): Promise<void> {
     (game.seatOrder ?? round.aliveIds).find((id) => id !== imposterId) ?? ''
   const crewSecret = await getDoc(secretRef(pin, crewId))
   const mainWord = crewSecret.exists() ? (crewSecret.data() as Secret).word : ''
-  const correct = normalize(round.guessText ?? '') === normalize(mainWord)
+
+  if (isCloseMatch(round.guessText ?? '', mainWord)) {
+    await finalizeGame(pin, 'crew-wins', true)
+    return
+  }
+  await updateDoc(gameRef(pin), { 'round.guessNeedsReview': true })
+}
+
+/** Host manually judges a guess that didn't auto-match (typo vs. synonym vs. wrong). */
+export async function resolveGuessReview(
+  pin: string,
+  correct: boolean,
+): Promise<void> {
+  requireDb()
   await finalizeGame(pin, 'crew-wins', correct)
+}
+
+/** Move from the round recap to the cumulative scoreboard (host). */
+export async function continueToScoreboard(pin: string): Promise<void> {
+  requireDb()
+  await updateDoc(gameRef(pin), { 'round.phase': 'result' })
 }
 
 /** Score the finished game, apply it to the scoreboard, and reveal everything. */
@@ -559,7 +579,7 @@ async function finalizeGame(
   const crewSecret = await getDoc(secretRef(pin, crewId))
   const mainWord = crewSecret.exists() ? (crewSecret.data() as Secret).word : ''
 
-  const scores = computeScores({
+  const scoreLines = computeScores({
     preset: game.scoring,
     playerIds,
     imposterId,
@@ -573,15 +593,16 @@ async function finalizeGame(
   const playersSnap = await getDocs(playersRef(pin))
   const batch = writeBatch(db)
   playersSnap.docs.forEach((d) => {
-    const delta = scores[d.id] ?? 0
+    const delta = scoreLines[d.id]?.delta ?? 0
     if (delta) batch.update(d.ref, { score: increment(delta) })
   })
   batch.update(gameRef(pin), {
-    'round.phase': 'result',
+    'round.phase': 'recap',
     'round.outcome': outcome,
     'round.imposterId': imposterId,
     'round.mainWord': mainWord,
     'round.guessCorrect': guessCorrect,
+    'round.scoreBreakdown': scoreLines,
   })
   await batch.commit()
 }

@@ -9,9 +9,11 @@ import {
   castGuess,
   castVote,
   continueAfterReveal,
+  continueToScoreboard,
   forgetGame,
   openVoting,
   resolveGuess,
+  resolveGuessReview,
   resolveVote,
   revealVotes,
   startGame,
@@ -95,22 +97,33 @@ function PlayerRow({
   isYou,
   index,
   disconnected,
+  eliminated,
 }: {
   player: Player
   isYou: boolean
   index?: number
   disconnected?: boolean
+  eliminated?: boolean
 }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface-raised p-3">
+    <div
+      className={
+        'flex items-center gap-3 rounded-2xl border border-line bg-surface-raised p-3' +
+        (eliminated ? ' opacity-50' : '')
+      }
+    >
       {index != null && (
         <span className="w-5 text-center font-black text-content-muted">
           {index}
         </span>
       )}
       <span className="text-2xl">{player.character}</span>
-      <span className="flex-1 font-bold text-content">
+      <span
+        className={
+          'flex-1 font-bold text-content' + (eliminated ? ' line-through' : '')
+        }
+      >
         {player.name}
         {isYou && (
           <span className="ms-1 text-sm font-normal text-content-muted">
@@ -118,6 +131,11 @@ function PlayerRow({
           </span>
         )}
       </span>
+      {eliminated && (
+        <span className="rounded-full bg-accent-500/10 px-2 py-0.5 text-xs font-bold text-accent-500">
+          {t('game.eliminated')}
+        </span>
+      )}
       {disconnected && (
         <span className="rounded-full bg-content-muted/10 px-2 py-0.5 text-xs font-bold text-content-muted">
           {t('lobby.disconnected')}
@@ -170,6 +188,7 @@ function CluePhase({
   staleIds: Set<string>
 }) {
   const { t } = useTranslation()
+  const iAmEliminated = !round.aliveIds.includes(uid)
   const order = round.turnOrder
     .map((id) => byId.get(id))
     .filter((p): p is Player => Boolean(p))
@@ -180,7 +199,13 @@ function CluePhase({
       <p className="mt-1 text-sm text-content-muted">{t('game.cluesHint')}</p>
 
       <div className="mt-4">
-        <WordCard secret={secret} />
+        {iAmEliminated ? (
+          <div className="rounded-2xl border-2 border-dashed border-line p-6 text-center text-content-muted">
+            {t('game.youAreEliminated')}
+          </div>
+        ) : (
+          <WordCard secret={secret} />
+        )}
       </div>
 
       <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
@@ -194,6 +219,7 @@ function CluePhase({
               isYou={p.id === uid}
               index={i + 1}
               disconnected={staleIds.has(p.id)}
+              eliminated={!round.aliveIds.includes(p.id)}
             />
           </li>
         ))}
@@ -381,29 +407,53 @@ function RevealPhase({
   isHost: boolean
 }) {
   const { t } = useTranslation()
+  const [revealed, setRevealed] = useState(false)
   const eliminated = round.eliminatedId ? byId.get(round.eliminatedId) : null
   const wasImposter = round.eliminatedRole === 'imposter'
+
+  useEffect(() => {
+    const id = setTimeout(() => setRevealed(true), 900)
+    return () => clearTimeout(id)
+  }, [])
 
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <div className="text-6xl">{eliminated?.character ?? '❓'}</div>
-        <h1 className="text-2xl font-black text-content">
-          {t('game.wasVotedOut', { name: eliminated?.name ?? '' })}
-        </h1>
-        <div
-          className={
-            'rounded-2xl border-2 px-5 py-3 text-lg font-black ' +
-            (wasImposter
-              ? 'border-accent-500 bg-accent-500/10 text-accent-600'
-              : 'border-brand-500 bg-brand-50 text-content dark:bg-brand-500/10')
-          }
-        >
-          {wasImposter ? t('game.wasImposter') : t('game.wasCrew')}
-        </div>
-        <p className="max-w-xs text-content-muted">
-          {wasImposter ? t('game.caughtHint') : t('game.notImposterHint')}
-        </p>
+        {!revealed ? (
+          <>
+            <div className="animate-suspense-pulse text-6xl">🤔</div>
+            <h1 className="text-2xl font-black text-content">
+              {t('game.revealing', { name: eliminated?.name ?? '' })}
+            </h1>
+          </>
+        ) : (
+          <>
+            <div
+              className={
+                'text-6xl ' +
+                (wasImposter ? 'animate-ominous-shake' : 'animate-pop-in')
+              }
+            >
+              {eliminated?.character ?? '❓'}
+            </div>
+            <h1 className="animate-pop-in text-2xl font-black text-content">
+              {t('game.wasVotedOut', { name: eliminated?.name ?? '' })}
+            </h1>
+            <div
+              className={
+                'animate-pop-in rounded-2xl border-2 px-5 py-3 text-lg font-black ' +
+                (wasImposter
+                  ? 'border-accent-500 bg-accent-500/10 text-accent-600'
+                  : 'border-brand-500 bg-brand-50 text-content dark:bg-brand-500/10')
+              }
+            >
+              {wasImposter ? t('game.wasImposter') : t('game.wasCrew')}
+            </div>
+            <p className="max-w-xs text-content-muted">
+              {wasImposter ? t('game.caughtHint') : t('game.notImposterHint')}
+            </p>
+          </>
+        )}
       </div>
 
       <HostOrWait
@@ -431,6 +481,38 @@ function GuessPhase({
   const [guess, setGuess] = useState('')
   const amImposter = secret?.role === 'imposter'
   const submitted = round.guessText != null
+
+  if (round.guessNeedsReview) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+        <div className="text-5xl">🤔</div>
+        <h1 className="text-2xl font-black text-content">
+          {t('game.guessReviewTitle')}
+        </h1>
+        <p className="max-w-xs text-content-muted">
+          {t('game.guessReviewHint')}
+        </p>
+        <div className="rounded-2xl border-2 border-line bg-surface-raised px-6 py-4 text-2xl font-black text-content">
+          "{round.guessText}"
+        </div>
+        {isHost ? (
+          <div className="mt-2 flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => resolveGuessReview(pin, false)}
+            >
+              ✕ {t('game.guessReviewWrong')}
+            </Button>
+            <Button onClick={() => resolveGuessReview(pin, true)}>
+              ✓ {t('game.guessReviewCorrect')}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-content-muted">{t('game.waitingHost')}</p>
+        )}
+      </div>
+    )
+  }
 
   if (amImposter && !submitted) {
     return (
@@ -501,7 +583,38 @@ function Scoreboard({ players }: { players: Player[] }) {
   )
 }
 
-function ResultPhase({
+const CONFETTI_COLORS = ['#8b5cf6', '#f43f5e', '#fbbf24', '#34d399', '#60a5fa']
+
+function Confetti() {
+  const pieces = Array.from({ length: 24 })
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-0 overflow-visible">
+      {pieces.map((_, i) => {
+        const left = (i * 37) % 100
+        const delay = ((i * 13) % 40) / 100
+        const duration = 1.2 + ((i * 7) % 8) / 10
+        const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length]
+        return (
+          <span
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${left}%`,
+              top: 0,
+              width: 8,
+              height: 8,
+              backgroundColor: color,
+              borderRadius: i % 2 === 0 ? '9999px' : '2px',
+              animation: `confetti-fall ${duration}s ease-in ${delay}s forwards`,
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function RecapPhase({
   pin,
   round,
   byId,
@@ -518,12 +631,20 @@ function ResultPhase({
   const crewWon = round.outcome === 'crew-wins'
   const imposter = round.imposterId ? byId.get(round.imposterId) : null
   const guessed = round.guessText != null
+  const breakdown = round.scoreBreakdown ?? {}
 
   return (
     <div className="flex flex-1 flex-col pb-4">
-      <div className="flex flex-col items-center gap-2 pt-2 text-center">
-        <div className="text-6xl">{crewWon ? '🎉' : '😈'}</div>
-        <h1 className="text-3xl font-black text-content">
+      <div className="relative flex flex-col items-center gap-2 pt-2 text-center">
+        {crewWon && <Confetti />}
+        <div
+          className={
+            'text-6xl ' + (crewWon ? 'animate-pop-in' : 'animate-ominous-shake')
+          }
+        >
+          {crewWon ? '🎉' : '😈'}
+        </div>
+        <h1 className="animate-pop-in text-3xl font-black text-content">
           {crewWon ? t('game.crewWins') : t('game.imposterWins')}
         </h1>
         {imposter && (
@@ -557,6 +678,71 @@ function ResultPhase({
       </div>
 
       <div className="mt-6">
+        <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
+          {t('game.pointsTitle')}
+        </h2>
+        <ul className="mt-2 flex flex-col gap-2">
+          {players.map((p) => {
+            const line = breakdown[p.id]
+            if (!line) return null
+            return (
+              <li
+                key={p.id}
+                className="flex items-start gap-3 rounded-2xl border border-line bg-surface-raised p-3"
+              >
+                <span className="text-2xl">{p.character}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1 font-bold text-content">
+                    {p.name}
+                    {p.id === round.imposterId && <span>🕵️</span>}
+                  </div>
+                  <div className="mt-0.5 text-xs text-content-muted">
+                    {line.reasons.map((r, i) => (
+                      <span key={i}>
+                        {i > 0 && ' · '}
+                        {t(`game.reasons.${r.key}`, r.params)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <span
+                  className={
+                    'text-lg font-black ' +
+                    (line.delta > 0 ? 'text-brand-600' : 'text-content-muted')
+                  }
+                >
+                  +{line.delta}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      <HostOrWait
+        isHost={isHost}
+        label={t('game.toScoreboard')}
+        onClick={() => continueToScoreboard(pin)}
+        waitKey="game.waitingHostNext"
+      />
+    </div>
+  )
+}
+
+function ResultPhase({
+  pin,
+  players,
+  isHost,
+}: {
+  pin: string
+  players: Player[]
+  isHost: boolean
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="flex flex-1 flex-col pb-4">
+      <div className="flex-1">
         <Scoreboard players={players} />
       </div>
 
@@ -632,17 +818,26 @@ export function GamePage() {
     }
   }, [isHost, round?.phase, round?.aliveIds.length, votes.length, pin])
 
-  // The host scores the imposter's guess once it's submitted.
+  // The host scores the imposter's guess once it's submitted (auto-match or
+  // flag it for the host's own Correct/Wrong call — see resolveGuess).
   useEffect(() => {
     if (
       isHost &&
       round?.phase === 'guess' &&
       round.guessText != null &&
-      round.guessCorrect == null
+      round.guessCorrect == null &&
+      !round.guessNeedsReview
     ) {
       resolveGuess(pin)
     }
-  }, [isHost, round?.phase, round?.guessText, round?.guessCorrect, pin])
+  }, [
+    isHost,
+    round?.phase,
+    round?.guessText,
+    round?.guessCorrect,
+    round?.guessNeedsReview,
+    pin,
+  ])
 
   if (loading || !game || !round) {
     return (
@@ -688,9 +883,9 @@ export function GamePage() {
       return (
         <GuessPhase pin={pin} round={round} secret={secret} isHost={isHost} />
       )
-    case 'result':
+    case 'recap':
       return (
-        <ResultPhase
+        <RecapPhase
           pin={pin}
           round={round}
           byId={byId}
@@ -698,6 +893,8 @@ export function GamePage() {
           isHost={isHost}
         />
       )
+    case 'result':
+      return <ResultPhase pin={pin} players={players} isHost={isHost} />
     default:
       return null
   }

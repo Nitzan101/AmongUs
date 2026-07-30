@@ -14,6 +14,7 @@ export type RoundPhase =
   | 'tally'
   | 'reveal'
   | 'guess'
+  | 'recap'
   | 'result'
 
 /** Which vote within a round: the first vote, or a revote after a tie. */
@@ -51,12 +52,29 @@ export interface Round {
   /** The caught imposter's typed guess at the main word (guess phase). */
   guessText?: string | null
   guessCorrect?: boolean | null
+  /** True once a guess didn't auto-match and needs the host's Correct/Wrong call. */
+  guessNeedsReview?: boolean | null
   /** Set when the game ends. */
   outcome?: Outcome | null
   /** The imposter, revealed only once the game is over. */
   imposterId?: string | null
   /** The real word, revealed only once the game is over. */
   mainWord?: string | null
+  /** This game's point breakdown, shown on the recap screen before the scoreboard. */
+  scoreBreakdown?: Record<string, ScoreLineItem> | null
+}
+
+/** A short, translatable explanation for part of a score change. */
+export interface ScoreReason {
+  /** Looked up as `game.reasons.<key>`. */
+  key: string
+  params?: Record<string, number>
+}
+
+/** One player's point change for a single finished game. */
+export interface ScoreLineItem {
+  delta: number
+  reasons: ScoreReason[]
 }
 
 /** A single cast vote (stored at games/{pin}/votes/{voterId}). */

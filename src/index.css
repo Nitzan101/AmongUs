@@ -76,3 +76,70 @@ body {
 button:not(:disabled) {
   cursor: pointer;
 }
+
+/* Reveal-moment effects: a suspenseful pulse before the flip, a playful
+   pop-in for good news, an ominous shake for bad news, and falling confetti
+   for a crew win. */
+@keyframes suspense-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+@keyframes pop-in {
+  0% {
+    transform: scale(0.5) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+@keyframes ominous-shake {
+  0%,
+  100% {
+    transform: translateX(0) scale(1);
+  }
+  20% {
+    transform: translateX(-6px) rotate(-2deg) scale(1.03);
+  }
+  40% {
+    transform: translateX(6px) rotate(2deg) scale(1.03);
+  }
+  60% {
+    transform: translateX(-4px) scale(1.03);
+  }
+  80% {
+    transform: translateX(4px) scale(1.03);
+  }
+}
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(160px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-suspense-pulse {
+  animation: suspense-pulse 1s ease-in-out infinite;
+}
+.animate-pop-in {
+  animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.animate-ominous-shake {
+  animation: ominous-shake 0.5s ease-in-out both;
+}

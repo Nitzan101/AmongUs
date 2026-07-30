@@ -151,3 +151,26 @@ imposter/confusing-word pairing and the root rule). Custom sets accept free text
 and may mix languages. Already true for dealt words today. Future refinement (built-in bank only):
 an explicit "word language" picker at game creation, separate from the host's UI language, for
 mixed groups.
+
+## 11. Post-playtest polish (round two)
+
+Raised after a live 4-device playtest of Milestone 5:
+
+- **Eliminated players are now clearly marked.** An eliminated player stays visible in the turn
+  order (greyed out, strikethrough, "Out" tag) instead of silently disappearing, and if it's
+  *you* who's eliminated, the clue screen shows a "you're eliminated — spectating" message
+  instead of your old word. (Voting already correctly excluded them; only the visual indicator
+  was missing.)
+- **Round recap before the scoreboard.** Ending a game now shows a dedicated recap: outcome,
+  imposter + word reveal, guess result, and a **per-player point breakdown with a short reason**
+  (e.g. "Team race bonus", "Survived 2 votes", "Spotted the imposter (2x)") — only *then* does the
+  host continue to the cumulative scoreboard. `computeScores` returns `{ delta, reasons[] }` per
+  player instead of a bare number; `Round.scoreBreakdown` stores it for the recap screen.
+- **Guess matching: auto-match + host fallback.** An exact match or a small typo (Levenshtein-based,
+  `src/game/textMatch.ts`) is accepted automatically. Anything else — including a fair synonym —
+  is shown to everyone with the host given a manual **Correct/Wrong** call (`round.guessNeedsReview`),
+  rather than ever auto-rejecting a reasonable guess.
+- **More dramatic reveal effects.** The elimination reveal now has a ~900ms suspense pulse before
+  flipping to the result (pop-in animation for good news, an "ominous shake" for bad news), and the
+  recap screen fires a small confetti burst on a crew win. Pure CSS keyframes in `index.css`, no
+  new dependencies.
