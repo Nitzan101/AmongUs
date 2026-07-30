@@ -14,7 +14,9 @@ export function HomePage() {
   const displayName = user?.displayName || user?.email?.split('@')[0] || ''
 
   // If this device was mid-game (closed tab, phone locked, etc.), drop
-  // straight back into it instead of showing the home screen.
+  // straight back into it instead of showing the home screen. Guarded so a
+  // failed or hung check (e.g. a network hiccup right as the page reloaded)
+  // can never leave the user stuck on a spinner forever.
   useEffect(() => {
     if (loading) return
     let cancelled = false
@@ -22,16 +24,30 @@ export function HomePage() {
       setResuming(false)
       return
     }
-    findMyActiveGame(user.uid).then((active) => {
-      if (cancelled) return
-      if (active) {
-        navigate(`/lobby/${active.pin}`, { replace: true })
-      } else {
-        setResuming(false)
-      }
-    })
+
+    const stopWaiting = () => {
+      if (!cancelled) setResuming(false)
+    }
+    const safetyTimeout = setTimeout(stopWaiting, 6000)
+
+    findMyActiveGame(user.uid)
+      .then((active) => {
+        if (cancelled) return
+        clearTimeout(safetyTimeout)
+        if (active) {
+          navigate(`/lobby/${active.pin}`, { replace: true })
+        } else {
+          setResuming(false)
+        }
+      })
+      .catch(() => {
+        clearTimeout(safetyTimeout)
+        stopWaiting()
+      })
+
     return () => {
       cancelled = true
+      clearTimeout(safetyTimeout)
     }
   }, [loading, user, navigate])
 
