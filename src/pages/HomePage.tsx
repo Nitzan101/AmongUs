@@ -89,13 +89,25 @@ export function HomePage() {
       </div>
 
       {user ? (
-        <div className="mt-6 flex items-center justify-between rounded-2xl border border-line bg-surface-raised p-4">
-          <span className="font-bold text-content">
-            {t('auth.greeting', { name: displayName })}
-          </span>
-          <Button variant="ghost" onClick={() => signOut()}>
-            {t('auth.signOut')}
-          </Button>
+        <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-content">
+              {t('auth.greeting', { name: displayName })}
+            </span>
+            <Button variant="ghost" onClick={() => signOut()}>
+              {t('auth.signOut')}
+            </Button>
+          </div>
+          {!user.isAnonymous && (
+            <Button
+              variant="ghost"
+              fullWidth
+              className="mt-1 text-brand-600"
+              onClick={() => navigate('/profile')}
+            >
+              {t('profile.title')} →
+            </Button>
+          )}
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4 text-center">

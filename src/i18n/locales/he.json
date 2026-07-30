@@ -50,7 +50,19 @@
     "creating": "יוצר…",
     "createError": "לא הצלחנו לפתוח את המשחק. נסו שוב.",
     "needAccountTitle": "התחברו כדי לפתוח משחק",
-    "needAccountBody": "פתיחת משחק דורשת חשבון חינמי. הצטרפות למשחק אף פעם לא."
+    "needAccountBody": "פתיחת משחק דורשת חשבון חינמי. הצטרפות למשחק אף פעם לא.",
+    "identityTitle": "מי אתם?",
+    "identitySubtitle": "בחרו שם ודמות למשחק הזה."
+  },
+  "profile": {
+    "title": "הפרופיל שלכם",
+    "subtitle": "אלה ימולאו אוטומטית כשתצטרפו למשחק — תמיד אפשר לשנות בכל משחק.",
+    "defaultNickname": "כינוי ברירת מחדל",
+    "defaultCharacter": "דמות ברירת מחדל",
+    "save": "שמירה",
+    "saved": "נשמר",
+    "needAccountTitle": "התחברו קודם",
+    "needAccountBody": "פרופילים נשמרים בחשבון. אורחים בוחרים שם בכל משחק."
   },
   "join": {
     "title": "הצטרפות למשחק",
@@ -61,6 +73,10 @@
     "pickCharacter": "בחרו דמות",
     "submit": "הצטרפו",
     "joining": "מצטרף…",
+    "checking": "בודק…",
+    "tryAnother": "נסו קוד אחר",
+    "identityTitle": "מי אתם?",
+    "identitySubtitle": "בחרו שם ודמות למשחק {{pin}}.",
     "errors": {
       "notFound": "לא נמצא משחק עם הקוד הזה.",
       "started": "המשחק הזה כבר התחיל.",
@@ -200,6 +216,7 @@
     "or": "או",
     "name": "שם",
     "namePlaceholder": "השם שלכם",
+    "pickCharacter": "הדמות שלכם (רשות)",
     "email": "אימייל",
     "emailPlaceholder": "you@example.com",
     "password": "סיסמה",

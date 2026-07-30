@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../auth/AuthContext'
 import { authErrorKey } from '../auth/authErrors'
+import { CHARACTERS, randomCharacter } from '../game/characters'
+import { saveProfile } from '../game/profile'
+import { auth } from '../lib/firebase'
 
 const inputClass =
   'mt-1 w-full rounded-2xl border-2 border-line bg-surface-raised px-4 py-3 text-content outline-none focus:border-brand-500'
@@ -16,6 +19,7 @@ export function SignInPage() {
 
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
   const [name, setName] = useState('')
+  const [character, setCharacter] = useState<string>(randomCharacter)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -42,11 +46,22 @@ export function SignInPage() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    run(() =>
-      isSignUp
-        ? signUpWithEmail(name.trim(), email.trim(), password)
-        : signInWithEmail(email.trim(), password),
-    )
+    run(async () => {
+      if (!isSignUp) {
+        await signInWithEmail(email.trim(), password)
+        return
+      }
+      await signUpWithEmail(name.trim(), email.trim(), password)
+      // Seed the account's defaults so the next game pre-fills them.
+      if (auth?.currentUser) {
+        await saveProfile(auth.currentUser.uid, {
+          nickname: name.trim(),
+          character,
+        }).catch(() => {
+          /* defaults are optional — never block sign-up on this */
+        })
+      }
+    })
   }
 
   return (
@@ -84,18 +99,44 @@ export function SignInPage() {
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         {isSignUp && (
-          <label className="block">
-            <span className="px-1 text-sm font-bold text-content-muted">
-              {t('auth.name')}
-            </span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('auth.namePlaceholder')}
-              autoComplete="name"
-              className={inputClass}
-            />
-          </label>
+          <>
+            <label className="block">
+              <span className="px-1 text-sm font-bold text-content-muted">
+                {t('auth.name')}
+              </span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('auth.namePlaceholder')}
+                autoComplete="name"
+                className={inputClass}
+              />
+            </label>
+
+            <div>
+              <span className="px-1 text-sm font-bold text-content-muted">
+                {t('auth.pickCharacter')}
+              </span>
+              <div className="mt-1 grid grid-cols-5 gap-2">
+                {CHARACTERS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCharacter(c)}
+                    aria-pressed={c === character}
+                    className={
+                      'aspect-square rounded-2xl border-2 text-2xl transition-colors ' +
+                      (c === character
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                        : 'border-line bg-surface-raised hover:border-brand-300')
+                    }
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
         <label className="block">

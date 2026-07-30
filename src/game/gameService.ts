@@ -158,6 +158,17 @@ export async function createGame(
   return pin
 }
 
+/**
+ * Check a PIN before asking for a name/character, so the player finds out
+ * immediately if the game doesn't exist or has already started.
+ */
+export async function checkGameJoinable(pin: string): Promise<void> {
+  requireDb()
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) throw new GameError('game-not-found')
+  if ((snap.data() as Game).status !== 'lobby') throw new GameError('game-started')
+}
+
 /** Join an existing game as a (possibly anonymous) player. */
 export async function joinGame(
   pin: string,

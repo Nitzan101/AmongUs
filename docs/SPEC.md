@@ -152,6 +152,26 @@ and may mix languages. Already true for dealt words today. Future refinement (bu
 an explicit "word language" picker at game creation, separate from the host's UI language, for
 mixed groups.
 
+## 13. Player identity & profiles
+
+Everyone picks their own name and character — the host is no longer auto-named from their account.
+
+- **Joining is two steps:** `/join` asks only for the **PIN**, validates it, then `/join/:pin` asks
+  for **name + character**. A game that doesn't exist or has already started is reported at the PIN
+  step, so nobody fills in a name for a game they can't enter. Share links land directly on
+  `/join/:pin`, which re-checks the PIN before showing the form.
+- **Creating is two steps too:** game options → name/character → create. The host chooses like
+  everyone else.
+- **Account defaults (optional):** account holders can save a default nickname and character
+  (`users/{uid}`), set during sign-up and editable at `/profile`. These **pre-fill** the
+  name/character screen and stay editable per game. Guests have no profile and pick per game.
+- `IdentityFields` is the shared component behind all three screens, so the choice looks and
+  behaves identically everywhere.
+
+**Future:** let players upload their own image to use as a character, instead of only the built-in
+emoji set. Would need Firebase Storage, an upload/crop UI, and moderation thinking for a public
+deploy — noted here so the emoji picker stays swappable.
+
 ## 12. Full-virtual mode (Milestone 6)
 
 How typed play differs from the in-person (half-virtual) mode:

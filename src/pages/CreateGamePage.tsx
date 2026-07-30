@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { OptionCard } from '../components/ui/Card'
+import { IdentityFields } from '../components/IdentityFields'
 import { useAuth } from '../auth/AuthContext'
 import { createGame } from '../game/gameService'
 import { randomCharacter } from '../game/characters'
+import { useProfile } from '../game/profile'
 import type { GameMode, GuessRule, Scoring } from '../game/types'
 import type { Difficulty } from '../words'
 import type { Language } from '../i18n'
@@ -39,6 +41,22 @@ export function CreateGamePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // The host picks their own name/character too, just like everyone else.
+  const [step, setStep] = useState<'options' | 'identity'>('options')
+  const [nickname, setNickname] = useState('')
+  const [character, setCharacter] = useState<string>(randomCharacter)
+  const { profile, loading: profileLoading } = useProfile(
+    user?.uid,
+    !user || user.isAnonymous,
+  )
+
+  useEffect(() => {
+    if (profileLoading) return
+    if (profile?.nickname) setNickname(profile.nickname)
+    else if (user) setNickname(user.displayName || user.email?.split('@')[0] || '')
+    if (profile?.character) setCharacter(profile.character)
+  }, [profile, profileLoading, user])
+
   // Hosting requires a real (non-guest) account.
   if (!user || user.isAnonymous) {
     return (
@@ -71,8 +89,8 @@ export function CreateGamePage() {
         },
         {
           uid: user!.uid,
-          name: user!.displayName || user!.email?.split('@')[0] || 'Host',
-          character: randomCharacter(),
+          name: nickname.trim(),
+          character,
         },
       )
       navigate(`/lobby/${pin}`)
@@ -80,6 +98,51 @@ export function CreateGamePage() {
       setError(t('create.createError'))
       setBusy(false)
     }
+  }
+
+  if (step === 'identity') {
+    return (
+      <div className="flex flex-1 flex-col">
+        <h1 className="text-3xl font-black text-content">
+          {t('create.identityTitle')}
+        </h1>
+        <p className="mt-1 text-content-muted">{t('create.identitySubtitle')}</p>
+
+        <div className="mt-6">
+          <IdentityFields
+            nickname={nickname}
+            onNicknameChange={setNickname}
+            character={character}
+            onCharacterChange={setCharacter}
+          />
+        </div>
+
+        {error && (
+          <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-auto pt-8">
+          <Button
+            size="lg"
+            fullWidth
+            disabled={nickname.trim().length === 0 || busy}
+            onClick={handleCreate}
+          >
+            {busy ? t('create.creating') : t('create.submit')}
+          </Button>
+          <Button
+            variant="ghost"
+            fullWidth
+            className="mt-2"
+            onClick={() => setStep('options')}
+          >
+            {t('common.back')}
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -176,15 +239,9 @@ export function CreateGamePage() {
         />
       </Section>
 
-      {error && (
-        <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
-          {error}
-        </p>
-      )}
-
       <div className="mt-8">
-        <Button size="lg" fullWidth disabled={busy} onClick={handleCreate}>
-          {busy ? t('create.creating') : t('create.submit')}
+        <Button size="lg" fullWidth onClick={() => setStep('identity')}>
+          {t('common.next')}
         </Button>
       </div>
     </div>

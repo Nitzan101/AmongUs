@@ -3,9 +3,11 @@ import { AuthProvider } from './auth/AuthContext'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { CreateGamePage } from './pages/CreateGamePage'
-import { JoinGamePage } from './pages/JoinGamePage'
+import { JoinPinPage } from './pages/JoinPinPage'
+import { JoinIdentityPage } from './pages/JoinIdentityPage'
 import { LobbyPage } from './pages/LobbyPage'
 import { GamePage } from './pages/GamePage'
+import { ProfilePage } from './pages/ProfilePage'
 import { RulesPage } from './pages/RulesPage'
 import { SignInPage } from './pages/SignInPage'
 import { WordsPage } from './pages/WordsPage'
@@ -17,10 +19,11 @@ const router = createBrowserRouter([
       { path: '/', element: <HomePage /> },
       { path: '/signin', element: <SignInPage /> },
       { path: '/create', element: <CreateGamePage /> },
-      { path: '/join', element: <JoinGamePage /> },
-      { path: '/join/:pin', element: <JoinGamePage /> },
+      { path: '/join', element: <JoinPinPage /> },
+      { path: '/join/:pin', element: <JoinIdentityPage /> },
       { path: '/lobby/:pin', element: <LobbyPage /> },
       { path: '/game/:pin', element: <GamePage /> },
+      { path: '/profile', element: <ProfilePage /> },
       { path: '/rules', element: <RulesPage /> },
       { path: '/words', element: <WordsPage /> },
     ],

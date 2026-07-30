@@ -50,7 +50,19 @@
     "creating": "Creating…",
     "createError": "Could not create the game. Please try again.",
     "needAccountTitle": "Sign in to host",
-    "needAccountBody": "Creating a game needs a free account. Joining a game never does."
+    "needAccountBody": "Creating a game needs a free account. Joining a game never does.",
+    "identityTitle": "Who are you?",
+    "identitySubtitle": "Pick your name and character for this game."
+  },
+  "profile": {
+    "title": "Your profile",
+    "subtitle": "These pre-fill when you join a game — you can always change them per game.",
+    "defaultNickname": "Default nickname",
+    "defaultCharacter": "Default character",
+    "save": "Save",
+    "saved": "Saved",
+    "needAccountTitle": "Sign in first",
+    "needAccountBody": "Profiles are saved to your account. Guests pick a name each game."
   },
   "join": {
     "title": "Join a game",
@@ -61,6 +73,10 @@
     "pickCharacter": "Pick your character",
     "submit": "Join",
     "joining": "Joining…",
+    "checking": "Checking…",
+    "tryAnother": "Try another PIN",
+    "identityTitle": "Who are you?",
+    "identitySubtitle": "Pick a name and character for game {{pin}}.",
     "errors": {
       "notFound": "No game found with that PIN.",
       "started": "That game has already started.",
@@ -200,6 +216,7 @@
     "or": "or",
     "name": "Name",
     "namePlaceholder": "Your name",
+    "pickCharacter": "Your character (optional)",
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "password": "Password",
