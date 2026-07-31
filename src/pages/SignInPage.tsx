@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { GoogleIcon } from '../components/GoogleIcon'
 import { useAuth } from '../auth/AuthContext'
 import { authErrorKey } from '../auth/authErrors'
 import { CHARACTERS, randomCharacter } from '../game/characters'
@@ -87,7 +88,7 @@ export function SignInPage() {
           disabled={busy || !configured}
           onClick={() => run(signInWithGoogle)}
         >
-          <span className="text-xl">🇬</span> {t('auth.google')}
+          <GoogleIcon /> {t('auth.google')}
         </Button>
       </div>
 
