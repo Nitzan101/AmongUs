@@ -257,6 +257,20 @@
     "tipTitle": "Golden rule: keep a straight face",
     "tipBody": "Never react to what anyone says — no laughing, frowning, or \"huh?\". A reaction reveals whether a word fit, which hands the game to the imposter (or wrongly exposes a friend).",
     "tipCaption": "Poker faces only!",
+    "s6Title": "Finding your way around",
+    "s6Body": "Here's what each button on the main screen does.",
+    "menu": {
+      "create": "Create a game",
+      "createDesc": "Start a game and invite friends. Needs a free account.",
+      "join": "Join a game",
+      "joinDesc": "Enter a PIN, or just open the link a friend sent. No account needed.",
+      "rules": "How to play",
+      "rulesDesc": "This guide — come back any time.",
+      "profile": "Your profile",
+      "profileDesc": "Save a default nickname and character so you don't retype them every game.",
+      "sets": "Word sets",
+      "setsDesc": "Make your own themed words — a birthday, a trip, an inside joke — and play with those instead of the built-in ones."
+    },
     "gotIt": "Got it!",
     "demo": {
       "mainWord": "Pizza",

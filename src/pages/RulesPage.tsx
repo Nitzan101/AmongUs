@@ -209,6 +209,34 @@ export function RulesPage() {
         </div>
       ),
     },
+    {
+      title: t('rules.s6Title'),
+      body: t('rules.s6Body'),
+      visual: (
+        <Card>
+          <div className="flex flex-col gap-2">
+            {[
+              { key: 'create', style: 'bg-brand-600 text-white' },
+              { key: 'join', style: 'border-2 border-line bg-surface' },
+              { key: 'rules', style: 'text-content-muted' },
+              { key: 'profile', style: 'border-2 border-line bg-surface' },
+              { key: 'sets', style: 'border-2 border-line bg-surface' },
+            ].map(({ key, style }) => (
+              <div key={key}>
+                <div
+                  className={`rounded-xl px-3 py-1.5 text-center text-xs font-bold ${style}`}
+                >
+                  {t(`rules.menu.${key}`)}
+                </div>
+                <p className="mt-0.5 px-1 text-[11px] leading-tight text-content-muted">
+                  {t(`rules.menu.${key}Desc`)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ),
+    },
   ]
 
   const last = index === slides.length - 1
