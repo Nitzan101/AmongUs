@@ -143,6 +143,17 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   per-account stats store updated at game end; account users only.
 - **Share/publish a game or word set:** shareable link to copy a themed set into your own account
   and host with it — ties into custom word sets (Milestone 7).
+- **Picture/emoji for a word set:** let the creator give a set its own icon so sets are
+  recognisable at a glance in the list and in the game-creation picker. Emoji first (cheap, no
+  storage); an uploaded image would share the plumbing with the custom-character upload below.
+- **Imposter-awareness option — AGREED BUT NOT BUILT.** In stage 3 the choice was "host option":
+  default that the imposter knows they're the imposter, with an optional hidden-role variant where
+  nobody is told. Recorded in §3 as a host option, but never implemented — the create screen has no
+  such setting and every game deals a known imposter. Needs: a `GameOptions` flag, a create-screen
+  option, and a `WordCard` variant that hides the "You're the imposter!" banner while still dealing
+  the confusing word.
+- **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
+  "100 is few" feedback, so both banks are worth another authoring pass.
 
 **Language vs. words (design decision):** the UI language (EN/HE toggle) and the word-content
 language are independent. Words are **never translated** — a dealt word is a fixed string shown
