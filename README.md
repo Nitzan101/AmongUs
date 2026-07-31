@@ -21,10 +21,14 @@ npm run dev     # start the local dev server, then open the printed URL
 Other scripts:
 
 ```bash
-npm run build   # type-check and produce a production build
-npm run preview # preview the production build locally
-npm run lint    # run the linter
+npm run build      # type-check and produce a production build
+npm run preview    # preview the production build locally
+npm run lint       # run the linter
+npm run test:rules # test firestore.rules against the Firestore emulator
+npm run icons      # regenerate the PWA icons
 ```
+
+`npm run test:rules` needs Java (for the Firebase emulator).
 
 ## Project status
 
@@ -41,8 +45,15 @@ automatic host migration if the host vanishes, host "reveal now"/"skip guess" ov
 auto-resume into your active game on reload, and reveal animations.
 See [docs/SPEC.md §9–15](docs/SPEC.md) for details.
 
-Remaining: **Milestone 8** — PWA install, the interactive rules/tutorial, Firestore security rules,
-and deploying to a public URL.
+**Milestone 8** adds an interactive rules walkthrough, PWA install, and tested Firestore security
+rules. The one step left is the deploy itself, which needs the account owner's Firebase login:
+
+```bash
+npx firebase login
+npx firebase use --add   # pick the Firebase project
+npm run build
+npx firebase deploy --only firestore:rules,hosting
+```
 
 Still to come: custom word sets (M7), then security rules + public deploy (M8).
 

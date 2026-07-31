@@ -177,6 +177,38 @@ Account holders can play with their own themed words instead of the built-in ban
 **Future:** share/publish a set so a friend can copy it into their own account and host with it
 (already noted in the future-features backlog).
 
+## 17. Polish & deploy (Milestone 8)
+
+- **Interactive rules walkthrough** (`/rules`): six swipeable cards that play out one mini-round
+  using miniature versions of the real screens, rather than a wall of text. Swipe (RTL-aware),
+  arrow keys, and tappable progress dots. The example words and names are translated, so each
+  language gets a natural walkthrough.
+- **PWA:** installable to a phone home screen — generated icon set (`scripts/make-icons.mjs`,
+  `npm run icons`: pure pixel maths + zlib, no image dependencies), standalone display, theme
+  colour, iOS `apple-touch-icon` and safe-area padding so content clears the notch. The service
+  worker auto-updates, and Firestore/Auth traffic is explicitly `NetworkOnly` so live game state
+  is never served from cache.
+- **Security rules** (`firestore.rules`) replace the wide-open development rules. Verified with
+  `npm run test:rules` — 31 assertions against the Firestore emulator covering every operation the
+  app performs and the attacks the rules must stop. Writing them surfaced three operations a naive
+  ruleset would have broken: the host reading secrets to resolve eliminations, the caught imposter
+  writing their guess to the game doc, and a player taking over hosting when the host's phone dies.
+  Deliberate tradeoffs are documented at the top of the rules file.
+- **Hosting config** (`firebase.json`): serves `dist`, rewrites all routes to `index.html` so deep
+  links like `/join/123456` work, long-caches hashed assets, and keeps `sw.js` uncached so updates
+  are picked up.
+
+**Deploying** (needs the account owner, since it requires a Firebase login):
+```
+npx firebase login
+npx firebase use --add          # pick the imposter-12401 project
+npm run build
+npx firebase deploy --only firestore:rules,hosting
+```
+Firebase Hosting domains (`*.web.app`, `*.firebaseapp.com`) are authorised for Google sign-in
+automatically. A custom domain would need adding under Authentication → Settings → Authorised
+domains.
+
 ## 16. Turn circle & word language
 
 - **Turn circle (fully-online mode):** players are drawn in a ring, the way they'd sit around a
