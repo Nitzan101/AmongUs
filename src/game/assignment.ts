@@ -1,6 +1,7 @@
 import { pickWords, type Difficulty } from '../words'
 import type { Language } from '../i18n'
 import type { Secret } from './types'
+import { pickWordsFromSet, type WordSetEntry } from './wordSets'
 
 export interface Assignment {
   seatOrder: string[]
@@ -23,6 +24,8 @@ export function rotate<T>(arr: T[], k: number): T[] {
  * be reasoned about and tested without Firestore.
  * - Turn order rotates one seat per game (game 1 starts at seat 0, game 2 at 1…).
  * - One random imposter gets the confusing word; everyone else gets the main word.
+ * - Words come from a custom set when `setEntries` is given, otherwise from the
+ *   built-in bank at the chosen difficulty.
  */
 export function buildAssignment(
   playerIds: string[],
@@ -31,6 +34,7 @@ export function buildAssignment(
     difficulty: Difficulty
     seatOrder?: string[]
     prevGameNumber?: number
+    setEntries?: WordSetEntry[]
   },
 ): Assignment {
   const seatOrder = opts.seatOrder ?? playerIds
@@ -39,7 +43,10 @@ export function buildAssignment(
   const turnOrder = rotate(seatOrder, startIndex)
 
   const imposterId = playerIds[Math.floor(Math.random() * playerIds.length)]
-  const { main, confusing } = pickWords(opts.language, opts.difficulty)
+  const { main, confusing } =
+    opts.setEntries && opts.setEntries.length > 0
+      ? pickWordsFromSet(opts.setEntries)
+      : pickWords(opts.language, opts.difficulty)
 
   const secrets: Record<string, Secret> = {}
   for (const id of playerIds) {

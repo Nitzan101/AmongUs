@@ -30,6 +30,11 @@ export interface GameOptions {
   difficulty: Difficulty
   scoring: Scoring
   guess: GuessRule
+  /**
+   * A custom word set to deal from. When absent the built-in bank is used,
+   * and `difficulty` applies; custom sets carry their own pairings instead.
+   */
+  wordSetId?: string | null
 }
 
 /** The state of the current round within an active game. */

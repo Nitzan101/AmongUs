@@ -11,6 +11,8 @@ import { ProfilePage } from './pages/ProfilePage'
 import { RulesPage } from './pages/RulesPage'
 import { SignInPage } from './pages/SignInPage'
 import { WordsPage } from './pages/WordsPage'
+import { WordSetsPage } from './pages/WordSetsPage'
+import { WordSetEditPage } from './pages/WordSetEditPage'
 
 const router = createBrowserRouter([
   {
@@ -26,6 +28,8 @@ const router = createBrowserRouter([
       { path: '/profile', element: <ProfilePage /> },
       { path: '/rules', element: <RulesPage /> },
       { path: '/words', element: <WordsPage /> },
+      { path: '/sets', element: <WordSetsPage /> },
+      { path: '/sets/:id', element: <WordSetEditPage /> },
     ],
   },
 ])

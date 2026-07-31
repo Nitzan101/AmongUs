@@ -18,6 +18,12 @@ import { buildAssignment } from './assignment'
 import { tallyVotes } from './tally'
 import { computeScores } from './scoring'
 import { isCloseMatch, normalizeGuess } from './textMatch'
+import {
+  cleanEntries,
+  getWordSet,
+  MIN_SET_ENTRIES,
+  type WordSetEntry,
+} from './wordSets'
 import type {
   Clue,
   Game,
@@ -354,11 +360,21 @@ export async function startGame(pin: string): Promise<void> {
   const playerIds = playersSnap.docs.map((d) => d.id)
   if (playerIds.length < 4) throw new GameError('not-enough-players')
 
+  // A custom set replaces the built-in bank for this game. If it has since been
+  // deleted or emptied, fall back to the bank rather than failing to deal.
+  let setEntries: WordSetEntry[] | undefined
+  if (game.wordSetId) {
+    const set = await getWordSet(game.wordSetId).catch(() => null)
+    const usable = set ? cleanEntries(set.entries) : []
+    if (usable.length >= MIN_SET_ENTRIES) setEntries = usable
+  }
+
   const assignment = buildAssignment(playerIds, {
     language: game.language,
     difficulty: game.difficulty,
     seatOrder: game.seatOrder,
     prevGameNumber: game.gameNumber,
+    setEntries,
   })
 
   await clearVotes(pin)

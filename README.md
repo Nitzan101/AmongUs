@@ -29,15 +29,20 @@ npm run lint    # run the linter
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestones 1–6 complete** — the full playable game in **both modes**: in-person
+Currently: **Milestones 1–7 complete** — the full playable game in **both modes**: in-person
 (clues spoken aloud) and **fully online** (clues typed in-app, with a live said-words feed and
 automatic duplicate blocking). Deal secret words, rotating turn order, secret voting with a
 reveal, elimination + role flip, tie→revote→skip, a caught-imposter guess phase (auto-match with
 a host Correct/Wrong fallback for typos/synonyms), three scoring presets, a **round recap**
-explaining each player's points before the cumulative scoreboard, and next-game — hardened with a
-presence heartbeat, "disconnected" tags, automatic host migration if the host vanishes, a host
-"reveal now" override, auto-resume into your active game on reload, and reveal animations.
-See [docs/SPEC.md §9–12](docs/SPEC.md) for details.
+explaining each player's points before the cumulative scoreboard, and next-game. Account holders
+can build **custom themed word sets** ("Mom's birthday") and play from them, with blank confusing
+words auto-filled from the same set. Hardened with a presence heartbeat, "disconnected" tags,
+automatic host migration if the host vanishes, host "reveal now"/"skip guess" overrides,
+auto-resume into your active game on reload, and reveal animations.
+See [docs/SPEC.md §9–15](docs/SPEC.md) for details.
+
+Remaining: **Milestone 8** — PWA install, the interactive rules/tutorial, Firestore security rules,
+and deploying to a public URL.
 
 Still to come: custom word sets (M7), then security rules + public deploy (M8).
 

@@ -15,6 +15,7 @@ import { buildAssignment } from './game/assignment'
 import { computeScores } from './game/scoring'
 import { tallyVotes } from './game/tally'
 import { isCloseMatch, normalizeGuess } from './game/textMatch'
+import * as wordSets from './game/wordSets'
 import * as presence from './game/presence'
 import { auth, db } from './lib/firebase'
 
@@ -25,6 +26,7 @@ import { auth, db } from './lib/firebase'
   tallyVotes,
   isCloseMatch,
   normalizeGuess,
+  wordSets,
   presence,
   auth,
   db,

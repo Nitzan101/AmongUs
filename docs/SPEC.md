@@ -152,6 +152,31 @@ and may mix languages. Already true for dealt words today. Future refinement (bu
 an explicit "word language" picker at game creation, separate from the host's UI language, for
 mixed groups.
 
+## 15. Custom word sets (Milestone 7)
+
+Account holders can play with their own themed words instead of the built-in bank.
+
+- **A set** (`wordSets/{id}`) is `{ ownerId, name, entries[] }`, where each entry is a **real word**
+  plus an **optional confusing word**. Managed at `/sets` (list, delete) and `/sets/:id` (create/edit,
+  with `new` as the id for a fresh one).
+- **Blank confusing words auto-fill at deal time** from another entry's main word in the *same set*,
+  so the imposter still gets something on-theme rather than a word from the generic bank. A filled
+  one is used exactly as written.
+- **Free text, any language, mixable** — consistent with the language-vs-words decision above.
+  Rows are trimmed and blank rows dropped on save (`cleanEntries`); a blank confusing word omits the
+  key entirely, since Firestore rejects `undefined`.
+- **Minimum 2 entries** (`MIN_SET_ENTRIES`) for auto-fill to have something to draw from. Smaller
+  sets are flagged in the list and hidden from the game-creation picker.
+- **Choosing a set:** the create-game screen shows a **Words** section (built-in bank vs. each usable
+  set) whenever the host has at least one usable set. Picking a custom set **hides the difficulty
+  options**, since difficulty tunes the built-in bank's cluster distances and a custom set carries
+  its own pairings.
+- **Resilience:** if the chosen set is deleted or emptied before a game starts, `startGame` falls
+  back to the built-in bank rather than failing to deal.
+
+**Future:** share/publish a set so a friend can copy it into their own account and host with it
+(already noted in the future-features backlog).
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active

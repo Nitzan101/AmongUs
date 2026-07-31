@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { createGame } from '../game/gameService'
 import { randomCharacter } from '../game/characters'
 import { useProfile } from '../game/profile'
+import { MIN_SET_ENTRIES, useMyWordSets } from '../game/wordSets'
 import type { GameMode, GuessRule, Scoring } from '../game/types'
 import type { Difficulty } from '../words'
 import type { Language } from '../i18n'
@@ -49,6 +50,11 @@ export function CreateGamePage() {
     user?.uid,
     !user || user.isAnonymous,
   )
+  const { sets } = useMyWordSets(user?.uid, !user || user.isAnonymous)
+  const usableSets = sets.filter(
+    (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
+  )
+  const [wordSetId, setWordSetId] = useState<string | null>(null)
 
   useEffect(() => {
     if (profileLoading) return
@@ -86,6 +92,7 @@ export function CreateGamePage() {
           difficulty,
           scoring,
           guess,
+          wordSetId,
         },
         {
           uid: user!.uid,
@@ -167,29 +174,54 @@ export function CreateGamePage() {
         />
       </Section>
 
-      <Section title={t('create.difficulty')}>
-        <OptionCard
-          icon="🙂"
-          title={t('create.difficultyEasy')}
-          description={t('create.difficultyEasyDesc')}
-          selected={difficulty === 'easy'}
-          onSelect={() => setDifficulty('easy')}
-        />
-        <OptionCard
-          icon="⚖️"
-          title={t('create.difficultyMedium')}
-          description={t('create.difficultyMediumDesc')}
-          selected={difficulty === 'medium'}
-          onSelect={() => setDifficulty('medium')}
-        />
-        <OptionCard
-          icon="🔥"
-          title={t('create.difficultyHard')}
-          description={t('create.difficultyHardDesc')}
-          selected={difficulty === 'hard'}
-          onSelect={() => setDifficulty('hard')}
-        />
-      </Section>
+      {usableSets.length > 0 && (
+        <Section title={t('create.words')}>
+          <OptionCard
+            icon="🎲"
+            title={t('create.wordsRandom')}
+            description={t('create.wordsRandomDesc')}
+            selected={wordSetId === null}
+            onSelect={() => setWordSetId(null)}
+          />
+          {usableSets.map((s) => (
+            <OptionCard
+              key={s.id}
+              icon="✏️"
+              title={s.name}
+              description={t('sets.wordCount', { count: s.entries.length })}
+              selected={wordSetId === s.id}
+              onSelect={() => setWordSetId(s.id)}
+            />
+          ))}
+        </Section>
+      )}
+
+      {/* Difficulty tunes the built-in bank; a custom set carries its own pairs. */}
+      {wordSetId === null && (
+        <Section title={t('create.difficulty')}>
+          <OptionCard
+            icon="🙂"
+            title={t('create.difficultyEasy')}
+            description={t('create.difficultyEasyDesc')}
+            selected={difficulty === 'easy'}
+            onSelect={() => setDifficulty('easy')}
+          />
+          <OptionCard
+            icon="⚖️"
+            title={t('create.difficultyMedium')}
+            description={t('create.difficultyMediumDesc')}
+            selected={difficulty === 'medium'}
+            onSelect={() => setDifficulty('medium')}
+          />
+          <OptionCard
+            icon="🔥"
+            title={t('create.difficultyHard')}
+            description={t('create.difficultyHardDesc')}
+            selected={difficulty === 'hard'}
+            onSelect={() => setDifficulty('hard')}
+          />
+        </Section>
+      )}
 
       <Section title={t('create.scoring')}>
         <OptionCard

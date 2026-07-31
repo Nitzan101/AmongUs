@@ -99,14 +99,24 @@ export function HomePage() {
             </Button>
           </div>
           {!user.isAnonymous && (
-            <Button
-              variant="ghost"
-              fullWidth
-              className="mt-1 text-brand-600"
-              onClick={() => navigate('/profile')}
-            >
-              {t('profile.title')} →
-            </Button>
+            <div className="mt-1 flex gap-2">
+              <Button
+                variant="ghost"
+                fullWidth
+                className="text-brand-600"
+                onClick={() => navigate('/profile')}
+              >
+                {t('profile.title')}
+              </Button>
+              <Button
+                variant="ghost"
+                fullWidth
+                className="text-brand-600"
+                onClick={() => navigate('/sets')}
+              >
+                {t('sets.title')}
+              </Button>
+            </div>
           )}
         </div>
       ) : (
