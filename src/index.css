@@ -63,6 +63,14 @@ body,
   height: 100%;
 }
 
+/* Installed to a home screen the app draws under the notch and home
+   indicator, so keep content inside the safe area. */
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

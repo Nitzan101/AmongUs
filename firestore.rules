@@ -1,0 +1,125 @@
+rules_version = '2';
+
+// Security rules for the Imposter game.
+//
+// WHAT THESE PROTECT
+//   * Your secret word can only be read by you (and the host — see the caveat).
+//   * You cannot write someone else's player, vote or clue document.
+//   * Profiles and custom word sets belong to their owner.
+//   * Only the host can change game settings, start a game, or delete the room.
+//
+// DELIBERATE TRADEOFFS (this is a party game, not a bank)
+//   * Any signed-in user can READ a game's public data. Knowing the PIN is what
+//     makes you a participant, and PINs are shared freely.
+//   * The HOST can read every secret. The host's own device has to resolve
+//     eliminations, score the game and reveal the word, and all of that runs
+//     client-side. A determined host could therefore peek at who the imposter
+//     is. Closing that hole properly needs server-side logic (Cloud Functions,
+//     which require a paid Firebase plan).
+//   * Any player in a game may write the round object. Several legitimate,
+//     non-host actions do this — the caught imposter submitting a guess, and a
+//     player removing themselves from the round when they leave. A player who
+//     opened developer tools could therefore tamper with round state. Everything
+//     outside `round` (settings, status, hostId) is still host-only.
+//   * Any player may take over hosting if the current host has gone quiet. This
+//     is what stops a game freezing when the host's phone dies.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function gameDoc(pin) {
+      return get(/databases/$(database)/documents/games/$(pin)).data;
+    }
+
+    function isHostOf(pin) {
+      return signedIn() && gameDoc(pin).hostId == request.auth.uid;
+    }
+
+    function isPlayerIn(pin) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/games/$(pin)/players/$(request.auth.uid));
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    match /games/{pin} {
+      // The current host counts as "gone" if their heartbeat is stale or their
+      // player document has disappeared entirely.
+      function hostAbsent() {
+        return !exists(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId))
+          || get(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId))
+               .data.lastSeen < request.time - duration.value(45, 's');
+      }
+
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.hostId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.hostId == request.auth.uid;
+
+      allow update: if signedIn() && (
+        // The host drives the game.
+        resource.data.hostId == request.auth.uid
+        // A player may change round state (guessing, leaving mid-round).
+        || (isPlayerIn(pin) && changedKeys().hasOnly(['round']))
+        // Host migration: take over only when the host has gone quiet.
+        || (isPlayerIn(pin)
+            && changedKeys().hasOnly(['hostId'])
+            && request.resource.data.hostId == request.auth.uid
+            && hostAbsent())
+      );
+
+      match /players/{uid} {
+        allow read: if signedIn();
+        // You manage your own entry; the host may kick and may write scores.
+        allow create, update, delete: if signedIn() &&
+          (request.auth.uid == uid || isHostOf(pin));
+        // `isHost` is only a display mirror of games.hostId, so letting players
+        // flip it keeps host migration working without widening anything real.
+        allow update: if isPlayerIn(pin) && changedKeys().hasOnly(['isHost']);
+      }
+
+      // The heart of the game: a secret is readable only by its owner.
+      // (The host can read them too — see the caveat at the top.)
+      match /secrets/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || isHostOf(pin));
+        allow write: if isHostOf(pin);
+      }
+
+      // Votes are revealed together, so they're readable; you cast only your own.
+      match /votes/{voterId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && request.auth.uid == voterId;
+        allow delete: if signedIn() && (request.auth.uid == voterId || isHostOf(pin));
+      }
+
+      // Clues are public once submitted; you submit only your own.
+      match /clues/{clueId} {
+        allow read: if signedIn();
+        allow create: if signedIn() &&
+          request.resource.data.playerId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isHostOf(pin);
+      }
+    }
+
+    // Your saved defaults are yours alone.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Custom word sets: readable by any signed-in user (so players in a game
+    // dealt from a set aren't blocked, and a future "share a set" feature works),
+    // writable only by their owner.
+    match /wordSets/{setId} {
+      allow read: if signedIn();
+      allow create: if signedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() &&
+        resource.data.ownerId == request.auth.uid;
+    }
+  }
+}
