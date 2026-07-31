@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
@@ -214,9 +214,13 @@ export function RulesPage() {
   const last = index === slides.length - 1
   const slide = slides[index]
 
-  function go(delta: number) {
-    setIndex((i) => Math.min(slides.length - 1, Math.max(0, i + delta)))
-  }
+  const count = slides.length
+  const go = useCallback(
+    (delta: number) => {
+      setIndex((i) => Math.min(count - 1, Math.max(0, i + delta)))
+    },
+    [count],
+  )
 
   // Arrow keys move through the walkthrough too.
   useEffect(() => {
@@ -226,7 +230,7 @@ export function RulesPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [go])
 
   return (
     <div

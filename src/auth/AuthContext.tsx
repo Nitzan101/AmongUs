@@ -8,9 +8,11 @@ import {
 } from 'react'
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   updateProfile,
   type User,
@@ -46,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
+    // Pick up a sign-in that completed via redirect (see signInWithGoogle).
+    getRedirectResult(auth).catch(() => {
+      /* nothing pending, or it already failed visibly */
+    })
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u)
       setLoading(false)
@@ -59,7 +65,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       configured: isFirebaseConfigured,
       async signInWithGoogle() {
-        await signInWithPopup(ensureAuth(), googleProvider)
+        const a = ensureAuth()
+        try {
+          await signInWithPopup(a, googleProvider)
+        } catch (err) {
+          // Popups are unavailable in a lot of the places people open share
+          // links from — in-app browsers (WhatsApp, Instagram), and anywhere
+          // with strict popup blocking. Fall back to a full-page redirect,
+          // which getRedirectResult picks up when we come back.
+          const code =
+            typeof err === 'object' && err !== null && 'code' in err
+              ? String((err as { code: unknown }).code)
+              : ''
+          const popupUnavailable =
+            code === 'auth/popup-blocked' ||
+            code === 'auth/operation-not-supported-in-this-environment' ||
+            code === 'auth/web-storage-unsupported'
+          if (!popupUnavailable) throw err
+          await signInWithRedirect(a, googleProvider)
+        }
       },
       async signUpWithEmail(name, email, password) {
         const cred = await createUserWithEmailAndPassword(
