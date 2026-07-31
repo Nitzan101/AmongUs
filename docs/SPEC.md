@@ -177,6 +177,21 @@ Account holders can play with their own themed words instead of the built-in ban
 **Future:** share/publish a set so a friend can copy it into their own account and host with it
 (already noted in the future-features backlog).
 
+## 16. Turn circle & word language
+
+- **Turn circle (fully-online mode):** players are drawn in a ring, the way they'd sit around a
+  table, numbered in clue-giving order. The player whose turn it is is highlighted and pulsing,
+  with their name in the middle ("Now up: Ben"); players who have already gone get a ✓, eliminated
+  players are greyed and struck through, and disconnected ones are labelled. Once everyone has
+  spoken the centre flips to "Everyone's spoken". This replaced a layout where the clue feed took
+  the place of the turn order entirely, so nobody could see whose turn it was. In-person mode keeps
+  its numbered list (the app can't know who has spoken there).
+- **Word language picker:** the host chooses which language the *secret words* come from at game
+  creation, defaulting to their current UI language but switchable — so an English-speaking host can
+  deal Hebrew words to Hebrew-speaking friends. This is the refinement flagged under the
+  language-vs-words decision. Shown only for the built-in bank; custom sets are free text and carry
+  their own language.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active

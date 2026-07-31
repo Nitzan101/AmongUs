@@ -55,6 +55,11 @@ export function CreateGamePage() {
     (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
   )
   const [wordSetId, setWordSetId] = useState<string | null>(null)
+  // Which language the *words* come from — independent of the UI language,
+  // so an English-speaking host can deal Hebrew words to Hebrew friends.
+  const [wordLanguage, setWordLanguage] = useState<Language>(
+    (i18n.resolvedLanguage ?? 'en') as Language,
+  )
 
   useEffect(() => {
     if (profileLoading) return
@@ -87,7 +92,7 @@ export function CreateGamePage() {
     try {
       const pin = await createGame(
         {
-          language: (i18n.resolvedLanguage ?? 'en') as Language,
+          language: wordLanguage,
           mode,
           difficulty,
           scoring,
@@ -193,6 +198,26 @@ export function CreateGamePage() {
               onSelect={() => setWordSetId(s.id)}
             />
           ))}
+        </Section>
+      )}
+
+      {/* The built-in bank has a list per language; a custom set is free text. */}
+      {wordSetId === null && (
+        <Section title={t('create.wordLanguage')}>
+          <OptionCard
+            icon="🇬🇧"
+            title={t('common.english')}
+            description={t('create.wordLanguageDesc')}
+            selected={wordLanguage === 'en'}
+            onSelect={() => setWordLanguage('en')}
+          />
+          <OptionCard
+            icon="🇮🇱"
+            title={t('common.hebrew')}
+            description={t('create.wordLanguageDesc')}
+            selected={wordLanguage === 'he'}
+            onSelect={() => setWordLanguage('he')}
+          />
         </Section>
       )}
 

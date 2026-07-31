@@ -24,6 +24,7 @@ import {
   submitClue,
 } from '../game/gameService'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
+import { TurnCircle } from '../components/TurnCircle'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
 import type { Clue, Player, Round, Secret, Vote } from '../game/types'
 
@@ -354,10 +355,27 @@ function CluePhase({
       {isFullVirtual ? (
         <>
           <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
-            {t('game.wordsSaid')}
+            {t('game.turnOrder')}
           </h2>
           <div className="mt-2">
-            <ClueFeed clues={clues} byId={byId} currentRound={round.number} />
+            <TurnCircle
+              order={order}
+              currentTurnId={currentTurnId}
+              doneIds={
+                new Set(
+                  clues
+                    .filter((c) => c.round === round.number)
+                    .map((c) => c.playerId),
+                )
+              }
+              uid={uid}
+              eliminatedIds={
+                new Set(
+                  round.turnOrder.filter((id) => !round.aliveIds.includes(id)),
+                )
+              }
+              staleIds={staleIds}
+            />
           </div>
 
           {!iAmEliminated && !allSubmitted && (
@@ -370,6 +388,13 @@ function CluePhase({
               />
             </div>
           )}
+
+          <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
+            {t('game.wordsSaid')}
+          </h2>
+          <div className="mt-2">
+            <ClueFeed clues={clues} byId={byId} currentRound={round.number} />
+          </div>
         </>
       ) : (
         <>
