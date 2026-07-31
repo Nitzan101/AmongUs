@@ -89,35 +89,39 @@ export function HomePage() {
       </div>
 
       {user ? (
-        <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-content">
-              {t('auth.greeting', { name: displayName })}
-            </span>
-            <Button variant="ghost" onClick={() => signOut()}>
-              {t('auth.signOut')}
-            </Button>
-          </div>
+        <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4">
+          {/* dir="auto" picks the direction from the text itself, so a Hebrew
+              name in an English greeting (or vice versa) keeps its punctuation
+              in the right place. */}
+          <p
+            dir="auto"
+            className="truncate text-center font-bold text-content"
+          >
+            {t('auth.greeting', { name: displayName })}
+          </p>
+
           {!user.isAnonymous && (
-            <div className="mt-1 flex gap-2">
+            <div className="flex gap-2">
               <Button
-                variant="ghost"
+                variant="secondary"
                 fullWidth
-                className="text-brand-600"
                 onClick={() => navigate('/profile')}
               >
                 {t('profile.title')}
               </Button>
               <Button
-                variant="ghost"
+                variant="secondary"
                 fullWidth
-                className="text-brand-600"
                 onClick={() => navigate('/sets')}
               >
                 {t('sets.title')}
               </Button>
             </div>
           )}
+
+          <Button variant="ghost" fullWidth onClick={() => signOut()}>
+            {t('auth.signOut')}
+          </Button>
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4 text-center">

@@ -204,17 +204,17 @@ export function CreateGamePage() {
       {/* The built-in bank has a list per language; a custom set is free text. */}
       {wordSetId === null && (
         <Section title={t('create.wordLanguage')}>
+          {/* Letter marks rather than flag emoji: Windows doesn't render flags,
+              showing bare "GB"/"IL" letter pairs instead. */}
           <OptionCard
-            icon="🇬🇧"
+            icon="A"
             title={t('common.english')}
-            description={t('create.wordLanguageDesc')}
             selected={wordLanguage === 'en'}
             onSelect={() => setWordLanguage('en')}
           />
           <OptionCard
-            icon="🇮🇱"
+            icon="א"
             title={t('common.hebrew')}
-            description={t('create.wordLanguageDesc')}
             selected={wordLanguage === 'he'}
             onSelect={() => setWordLanguage('he')}
           />
