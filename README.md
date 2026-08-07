@@ -33,7 +33,10 @@ npm run icons      # regenerate the PWA icons
 ## Project status
 
 Built milestone by milestone — see the milestone list in [docs/SPEC.md](docs/SPEC.md).
-Currently: **Milestones 1–7 complete** — the full playable game in **both modes**: in-person
+**All milestones (0–8) are complete, and the game is live at
+[imposter-12401.web.app](https://imposter-12401.web.app).**
+
+The full playable game in **both modes**: in-person
 (clues spoken aloud) and **fully online** (clues typed in-app, with a live said-words feed and
 automatic duplicate blocking). Deal secret words, rotating turn order, secret voting with a
 reveal, elimination + role flip, tie→revote→skip, a caught-imposter guess phase (auto-match with
@@ -45,17 +48,35 @@ automatic host migration if the host vanishes, host "reveal now"/"skip guess" ov
 auto-resume into your active game on reload, and reveal animations.
 See [docs/SPEC.md §9–15](docs/SPEC.md) for details.
 
-**Milestone 8** adds an interactive rules walkthrough, PWA install, and tested Firestore security
-rules. The one step left is the deploy itself, which needs the account owner's Firebase login:
+**Milestone 8** added an interactive rules walkthrough, PWA install, tested Firestore security
+rules, and the public deploy. Since going live: Google sign-in was fixed for the deployed
+domains (see `resolveAuthDomain` in `src/lib/firebase.ts`), the host can pick the word language
+independently of the UI language, and the tutorial explains the main-screen buttons.
+
+What's left is the open backlog in [docs/SPEC.md §10](docs/SPEC.md) — most notably the
+**imposter-awareness host option**, which §3 records as agreed but which was never built.
+
+### Deploying an update
+
+Needs the account owner's Firebase login (a one-off per machine):
 
 ```bash
 npx firebase login
-npx firebase use --add   # pick the Firebase project
+```
+
+The Firebase project is set in `.firebaserc`, so no `firebase use` is needed. Then:
+
+```bash
 npm run build
 npx firebase deploy --only firestore:rules,hosting
 ```
 
-Still to come: custom word sets (M7), then security rules + public deploy (M8).
+### Running it on a fresh machine
+
+`.env.local` is git-ignored, so it never arrives with a clone — create it from `.env.example`
+using the values in Firebase Console → Project settings → General → Your apps → Config.
+Without it the app still runs (home, join, and the rules walkthrough work), but sign-in is
+disabled and no game can be hosted.
 
 For phone testing on the local network, the dev server listens on the LAN (`server.host` in
 `vite.config.ts`); open the printed `Network:` URL on a phone on the same WiFi.
