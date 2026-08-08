@@ -13,6 +13,10 @@ export function joinErrorKey(err: unknown): string {
     case 'not-configured':
       return 'join.errors.notConfigured'
     default:
+      // Anything unmapped becomes a vague "try again" for the player, which
+      // once hid a Firestore PERMISSION_DENIED for days. Keep the friendly
+      // message, but leave the real error somewhere a developer can find it.
+      console.error('Unmapped join error:', err)
       return 'join.errors.generic'
   }
 }

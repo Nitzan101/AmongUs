@@ -2,7 +2,12 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../auth/AuthContext'
-import { deleteWordSet, MIN_SET_ENTRIES, useMyWordSets } from '../game/wordSets'
+import {
+  DEFAULT_SET_ICON,
+  deleteWordSet,
+  MIN_SET_ENTRIES,
+  useMyWordSets,
+} from '../game/wordSets'
 
 /** List the signed-in user's custom word sets. */
 export function WordSetsPage() {
@@ -65,12 +70,18 @@ export function WordSetsPage() {
                 <button
                   type="button"
                   onClick={() => navigate(`/sets/${s.id}`)}
-                  className="flex-1 text-start"
+                  className="flex flex-1 items-center gap-3 text-start"
                 >
-                  <span className="block font-bold text-content">{s.name}</span>
-                  <span className="text-sm text-content-muted">
-                    {t('sets.wordCount', { count })}
-                    {tooSmall && ` · ${t('sets.needMore', { count: MIN_SET_ENTRIES })}`}
+                  <span aria-hidden="true" className="text-2xl">
+                    {s.icon || DEFAULT_SET_ICON}
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-bold text-content">{s.name}</span>
+                    <span className="text-sm text-content-muted">
+                      {t('sets.wordCount', { count })}
+                      {tooSmall &&
+                        ` · ${t('sets.needMore', { count: MIN_SET_ENTRIES })}`}
+                    </span>
                   </span>
                 </button>
                 <button

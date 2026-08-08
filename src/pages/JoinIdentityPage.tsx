@@ -30,11 +30,18 @@ export function JoinIdentityPage() {
   const [blocked, setBlocked] = useState<string | null>(null)
 
   // Re-check the PIN (share links arrive here without passing through step 1).
+  // A player who is already in the game skips this screen entirely — a shared
+  // link tapped a second time shouldn't ask them to pick a name all over again.
   useEffect(() => {
     let cancelled = false
     checkGameJoinable(pin)
-      .then(() => {
-        if (!cancelled) setChecking(false)
+      .then(({ alreadyJoined }) => {
+        if (cancelled) return
+        if (alreadyJoined) {
+          navigate(`/lobby/${pin}`, { replace: true })
+          return
+        }
+        setChecking(false)
       })
       .catch((err) => {
         if (cancelled) return
@@ -44,7 +51,7 @@ export function JoinIdentityPage() {
     return () => {
       cancelled = true
     }
-  }, [pin, t])
+  }, [pin, t, navigate])
 
   // Pre-fill from the account's saved defaults once they've loaded.
   useEffect(() => {

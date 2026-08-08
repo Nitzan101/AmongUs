@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { IdentityFields } from '../components/IdentityFields'
+import { ProfileIcon } from '../components/NavIcons'
 import { useAuth } from '../auth/AuthContext'
 import { randomCharacter } from '../game/characters'
 import { saveProfile, useProfile } from '../game/profile'
@@ -68,7 +69,10 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <h1 className="text-3xl font-black text-content">{t('profile.title')}</h1>
+      <h1 className="flex items-center gap-2 text-3xl font-black text-content">
+        <ProfileIcon size={26} />
+        {t('profile.title')}
+      </h1>
       <p className="mt-1 text-content-muted">{t('profile.subtitle')}</p>
 
       <div className="mt-6">

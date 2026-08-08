@@ -8,7 +8,11 @@ import { useAuth } from '../auth/AuthContext'
 import { createGame } from '../game/gameService'
 import { randomCharacter } from '../game/characters'
 import { useProfile } from '../game/profile'
-import { MIN_SET_ENTRIES, useMyWordSets } from '../game/wordSets'
+import {
+  DEFAULT_SET_ICON,
+  MIN_SET_ENTRIES,
+  useMyWordSets,
+} from '../game/wordSets'
 import type { GameMode, GuessRule, Scoring } from '../game/types'
 import type { Difficulty } from '../words'
 import type { Language } from '../i18n'
@@ -191,7 +195,7 @@ export function CreateGamePage() {
           {usableSets.map((s) => (
             <OptionCard
               key={s.id}
-              icon="✏️"
+              icon={s.icon || DEFAULT_SET_ICON}
               title={s.name}
               description={t('sets.wordCount', { count: s.entries.length })}
               selected={wordSetId === s.id}

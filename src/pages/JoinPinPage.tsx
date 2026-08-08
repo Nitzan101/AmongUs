@@ -18,8 +18,10 @@ export function JoinPinPage() {
     setError(null)
     setBusy(true)
     try {
-      await checkGameJoinable(pin.trim())
-      navigate(`/join/${pin.trim()}`)
+      const { alreadyJoined } = await checkGameJoinable(pin.trim())
+      // Already in this game? Straight back in — no point re-picking a name
+      // you already have. (The lobby forwards to the game if it's running.)
+      navigate(alreadyJoined ? `/lobby/${pin.trim()}` : `/join/${pin.trim()}`)
     } catch (err) {
       setError(t(joinErrorKey(err)))
       setBusy(false)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -30,12 +31,35 @@ export interface WordSet {
   id: string
   ownerId: string
   name: string
+  /** An emoji the creator picked, so sets are recognisable at a glance. */
+  icon?: string
   entries: WordSetEntry[]
   updatedAt?: Timestamp | null
 }
 
 /** A set needs at least this many entries for blank confusing words to work. */
 export const MIN_SET_ENTRIES = 2
+
+/** Shown for sets saved before icons existed, and as the picker's default. */
+export const DEFAULT_SET_ICON = '✏️'
+
+/**
+ * A small spread of themes rather than an exhaustive picker — birthdays, food,
+ * sport, travel, and so on — enough to label a set without a search field.
+ */
+export const SET_ICONS = [
+  '✏️', '🎂', '🎉', '🎬', '🎵', '⚽', '🍕', '✈️',
+  '🐶', '🌍', '💼', '🎮', '📚', '🚗', '🌸', '⭐',
+] as const
+
+/**
+ * Emoji are stored as-is, but a set saved from another device could carry
+ * anything; keep only a short string so one bad value can't break the layout.
+ */
+function cleanIcon(icon: string | undefined): string | undefined {
+  const trimmed = icon?.trim()
+  return trimmed ? trimmed.slice(0, 8) : undefined
+}
 
 function requireDb() {
   if (!db) throw new Error('not-configured')
@@ -77,11 +101,15 @@ export async function createWordSet(
   ownerId: string,
   name: string,
   entries: WordSetEntry[],
+  icon?: string,
 ): Promise<string> {
   const ref = doc(setsRef())
+  const cleanedIcon = cleanIcon(icon)
   await setDoc(ref, {
     ownerId,
     name: name.trim(),
+    // Omitted rather than set to undefined, which Firestore rejects.
+    ...(cleanedIcon ? { icon: cleanedIcon } : {}),
     entries: cleanEntries(entries),
     updatedAt: serverTimestamp(),
   })
@@ -92,9 +120,14 @@ export async function updateWordSet(
   id: string,
   name: string,
   entries: WordSetEntry[],
+  icon?: string,
 ): Promise<void> {
+  const cleanedIcon = cleanIcon(icon)
   await updateDoc(setRef(id), {
     name: name.trim(),
+    // deleteField() rather than a bare undefined, so clearing an icon on an
+    // existing set actually removes it instead of being rejected.
+    icon: cleanedIcon ?? deleteField(),
     entries: cleanEntries(entries),
     updatedAt: serverTimestamp(),
   })

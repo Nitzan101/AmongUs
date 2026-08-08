@@ -125,14 +125,20 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   `aliveIds`/`turnOrder`/`candidates` and their in-flight vote (pre-dating this pass); the game
   screen now also notices it's missing from the player list and bounces to the lobby.
 
+**Also resolved since:**
+- ✅ **Mid-game kick UI:** a collapsed "Manage players" panel sits under every phase of the game
+  for the host, so someone whose phone died can be removed without waiting for the round to end.
+  Collapsed by design — an always-visible ✕ beside each player during a tense vote invites
+  mis-taps. The `kickPlayer` cleanup it calls already existed.
+- ✅ **Rejoin UX polish:** `checkGameJoinable` now reports whether this device is already a
+  player, and both join routes send them straight to the lobby instead of re-asking for a
+  nickname. This also fixes a worse case: a player returning to a game **already in progress**
+  used to be told "this game has already started" — their own game — because the status check
+  ran before any membership check.
+
 **Remaining, lower-priority:**
-- **Mid-game kick UI:** the backend cleanup for kicking already works, but there's no kick button
-  on the game screen itself yet (only in the lobby) — a host who needs to remove someone mid-round
-  has to wait for the round to end.
-- **Rejoin UX polish:** if you're already a player, the join link still asks for nickname/character
-  again before dropping you in, rather than recognizing you immediately.
-- **Join in progress:** still blocked ("already started"). Future: let latecomers wait and join
-  the next game (the room already returns to a lobby between games).
+- **Join in progress:** a *new* player is still blocked ("already started"). Future: let
+  latecomers wait and join the next game (the room already returns to a lobby between games).
 
 ## 10. Future features backlog
 
@@ -144,9 +150,12 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   per-account stats store updated at game end; account users only.
 - **Share/publish a game or word set:** shareable link to copy a themed set into your own account
   and host with it — ties into custom word sets (Milestone 7).
-- **Picture/emoji for a word set:** let the creator give a set its own icon so sets are
-  recognisable at a glance in the list and in the game-creation picker. Emoji first (cheap, no
-  storage); an uploaded image would share the plumbing with the custom-character upload below.
+- ✅ **Emoji for a word set — BUILT.** The creator picks from a 16-emoji spread when editing a
+  set; it shows in the sets list and the game-creation picker, defaulting to ✏️ for sets saved
+  before icons existed. Stored as `WordSet.icon`, omitted rather than written as `undefined`
+  (Firestore rejects that), and cleared with `deleteField()` so removing one actually removes it.
+  *Still open:* an **uploaded image** instead of an emoji, which would share the plumbing with the
+  custom-character upload below.
 - **Imposter-awareness option — AGREED BUT NOT BUILT.** In stage 3 the choice was "host option":
   default that the imposter knows they're the imposter, with an optional hidden-role variant where
   nobody is told. Recorded in §3 as a host option, but never implemented — the create screen has no
@@ -155,12 +164,11 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   the confusing word.
 - **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
   "100 is few" feedback, so both banks are worth another authoring pass.
-- **Navigation icons for profile and word sets:** the home account card and the word-sets entry
-  are text-only today. Give each a small icon — a person/avatar glyph for the profile, and a
-  folder or stack-of-cards glyph for the sets — so both are recognisable at a glance. This is
-  *decoration for the app's own navigation*, distinct from the per-set creator-chosen emoji above:
-  that one varies per set, this one is a fixed icon on the link. Cheap; inline SVG keeps it
-  dependency-free and theme-aware, matching how the Google logo was done.
+- ✅ **Navigation icons for profile and word sets — BUILT.** `src/components/NavIcons.tsx`: a
+  person glyph for the profile and a stack-of-cards glyph for the sets (a folder's tab detail
+  vanishes at 18px). Inline SVG stroked with `currentColor`, so they inherit the button's colour
+  and follow the theme — same approach as the Google mark. On the home account card and each
+  page's heading. Distinct from the per-set emoji above: that varies per set, this is fixed.
 - **In-game voice chat (host option, off by default):** a microphone button players can mute and
   unmute during the game, enabled by the host at game creation like the other options. Notes worth
   keeping before this is scoped:

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { ProfileIcon, WordSetsIcon } from '../components/NavIcons'
 import { useAuth } from '../auth/AuthContext'
 import { findMyActiveGame, hasRememberedGame } from '../game/gameService'
 
@@ -107,6 +108,7 @@ export function HomePage() {
                 fullWidth
                 onClick={() => navigate('/profile')}
               >
+                <ProfileIcon />
                 {t('profile.title')}
               </Button>
               <Button
@@ -114,6 +116,7 @@ export function HomePage() {
                 fullWidth
                 onClick={() => navigate('/sets')}
               >
+                <WordSetsIcon />
                 {t('sets.title')}
               </Button>
             </div>

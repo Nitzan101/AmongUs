@@ -23,6 +23,7 @@ import {
   startGame,
   submitClue,
 } from '../game/gameService'
+import { HostPlayerManager } from '../components/HostPlayerManager'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { TurnCircle } from '../components/TurnCircle'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
@@ -1165,6 +1166,10 @@ export function GamePage() {
   return (
     <div className="flex flex-1 flex-col">
       {phaseView}
+
+      {/* Available in every phase: the host shouldn't have to wait for the
+          round to end to remove a player whose phone died. */}
+      {isHost && <HostPlayerManager pin={pin} players={players} uid={uid} />}
 
       <button
         type="button"

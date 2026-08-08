@@ -6,8 +6,10 @@ import { useAuth } from '../auth/AuthContext'
 import {
   cleanEntries,
   createWordSet,
+  DEFAULT_SET_ICON,
   getWordSet,
   MIN_SET_ENTRIES,
+  SET_ICONS,
   updateWordSet,
   type WordSetEntry,
 } from '../game/wordSets'
@@ -30,6 +32,7 @@ export function WordSetEditPage() {
   const isNew = id === 'new'
 
   const [name, setName] = useState('')
+  const [icon, setIcon] = useState<string>(DEFAULT_SET_ICON)
   const [rows, setRows] = useState<WordSetEntry[]>(emptyRows(BLANK_ROWS))
   const [loading, setLoading] = useState(!isNew)
   const [busy, setBusy] = useState(false)
@@ -42,6 +45,7 @@ export function WordSetEditPage() {
       .then((set) => {
         if (cancelled || !set) return
         setName(set.name)
+        setIcon(set.icon || DEFAULT_SET_ICON)
         setRows([
           ...set.entries.map((e) => ({
             main: e.main,
@@ -79,8 +83,8 @@ export function WordSetEditPage() {
     setBusy(true)
     setError(null)
     try {
-      if (isNew) await createWordSet(user.uid, name, rows)
-      else await updateWordSet(id!, name, rows)
+      if (isNew) await createWordSet(user.uid, name, rows, icon)
+      else await updateWordSet(id!, name, rows, icon)
       navigate('/sets')
     } catch {
       setError(t('sets.saveError'))
@@ -116,6 +120,35 @@ export function WordSetEditPage() {
           className={`mt-1 text-lg ${inputClass}`}
         />
       </label>
+
+      <div className="mt-4">
+        <span className="px-1 text-sm font-bold text-content-muted">
+          {t('sets.iconLabel')}
+        </span>
+        <div
+          role="radiogroup"
+          aria-label={t('sets.iconLabel')}
+          className="mt-1 flex flex-wrap gap-2"
+        >
+          {SET_ICONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={icon === option}
+              onClick={() => setIcon(option)}
+              className={
+                'flex h-11 w-11 items-center justify-center rounded-xl border-2 text-xl transition-transform active:scale-95 ' +
+                (icon === option
+                  ? 'border-brand-500 bg-brand-500/10'
+                  : 'border-line bg-surface-raised hover:border-brand-400')
+              }
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-2">
         <span className="px-1 text-xs font-bold uppercase tracking-wide text-content-muted">

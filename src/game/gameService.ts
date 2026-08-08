@@ -164,16 +164,35 @@ export async function createGame(
   return pin
 }
 
+/** What a PIN check found, so the caller knows whether to ask for a name. */
+export interface JoinCheck {
+  /** True when this device is already a player — skip the identity step. */
+  alreadyJoined: boolean
+}
+
 /**
  * Check a PIN before asking for a name/character, so the player finds out
  * immediately if the game doesn't exist or has already started.
+ *
+ * Someone who is *already* a player is let straight back in, even mid-game:
+ * that's the rejoin path (tapping the share link again, or reopening after a
+ * crash), and it would be absurd to tell a player their own game has already
+ * started. The remembered PIN is refreshed so auto-resume works afterwards.
  */
-export async function checkGameJoinable(pin: string): Promise<void> {
+export async function checkGameJoinable(pin: string): Promise<JoinCheck> {
   requireDb()
-  await ensureSignedIn()
+  const uid = await ensureSignedIn()
   const snap = await getDoc(gameRef(pin))
   if (!snap.exists()) throw new GameError('game-not-found')
+
+  const mine = await getDoc(playerRef(pin, uid))
+  if (mine.exists()) {
+    rememberGame(pin)
+    return { alreadyJoined: true }
+  }
+
   if ((snap.data() as Game).status !== 'lobby') throw new GameError('game-started')
+  return { alreadyJoined: false }
 }
 
 /** Join an existing game as a (possibly anonymous) player. */
