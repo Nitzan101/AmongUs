@@ -170,6 +170,7 @@ export async function createGame(
  */
 export async function checkGameJoinable(pin: string): Promise<void> {
   requireDb()
+  await ensureSignedIn()
   const snap = await getDoc(gameRef(pin))
   if (!snap.exists()) throw new GameError('game-not-found')
   if ((snap.data() as Game).status !== 'lobby') throw new GameError('game-started')
