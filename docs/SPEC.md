@@ -56,6 +56,7 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 - **Scoring preset:** Team Race / Survivors / Detective.
 - **Guess rule:** Final Guess / Steal the Win / Off.
 - **Imposter awareness:** default the imposter knows he is the imposter; optional hidden-role variant.
+- **Voice chat:** off by default; the host may enable a mutable microphone for the game (§10).
 
 ## 4. Accounts & joining
 
@@ -154,14 +155,37 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   the confusing word.
 - **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
   "100 is few" feedback, so both banks are worth another authoring pass.
+- **Navigation icons for profile and word sets:** the home account card and the word-sets entry
+  are text-only today. Give each a small icon — a person/avatar glyph for the profile, and a
+  folder or stack-of-cards glyph for the sets — so both are recognisable at a glance. This is
+  *decoration for the app's own navigation*, distinct from the per-set creator-chosen emoji above:
+  that one varies per set, this one is a fixed icon on the link. Cheap; inline SVG keeps it
+  dependency-free and theme-aware, matching how the Google logo was done.
+- **In-game voice chat (host option, off by default):** a microphone button players can mute and
+  unmute during the game, enabled by the host at game creation like the other options. Notes worth
+  keeping before this is scoped:
+  - **Only meaningful in full-virtual mode.** In-person players are already talking in the room.
+  - **Free-plan reality:** WebRTC peer-to-peer works with Firestore for signalling and costs
+    nothing, but a full mesh degrades past roughly 4–6 players — which is exactly this game's
+    size, so it may just fit. Anything larger wants an SFU (Agora/LiveKit/Daily), which is paid
+    and would be the first running cost the project has.
+  - **It collides with two existing rules.** §1 asks players to keep a straight face, and
+    full-virtual mode enforces clue order and duplicate blocking through typed input. Live voice
+    during the clue phase would undermine both. Suggested shape: keep clues typed, and open the
+    microphone only for the **discussion/voting phase** — where arguing is the whole point and the
+    game currently has no channel for it at all. That preserves the enforcement and adds the
+    social part where it belongs.
+  - **Practicalities:** microphone permission prompts on mobile browsers, echo when several
+    players sit in one room, battery drain, and a clear always-visible indicator of who is
+    currently unmuted.
 
 **Language vs. words (design decision):** the UI language (EN/HE toggle) and the word-content
 language are independent. Words are **never translated** — a dealt word is a fixed string shown
 as authored, regardless of each player's UI language (auto-translating would break the
 imposter/confusing-word pairing and the root rule). Custom sets accept free text in any language
-and may mix languages. Already true for dealt words today. Future refinement (built-in bank only):
-an explicit "word language" picker at game creation, separate from the host's UI language, for
-mixed groups.
+and may mix languages. Already true for dealt words today. The refinement this decision flagged —
+an explicit "word language" picker at game creation, separate from the host's UI language — has
+since been built for the built-in bank (see §16).
 
 ## 15. Custom word sets (Milestone 7)
 
