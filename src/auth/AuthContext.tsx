@@ -20,7 +20,18 @@ import {
 import { auth, googleProvider, isFirebaseConfigured } from '../lib/firebase'
 
 interface AuthContextValue {
+  /**
+   * The Firebase user, which may be an anonymous guest. Use this for a uid;
+   * use `isGuest` to decide anything about being signed in.
+   */
   user: User | null
+  /**
+   * True unless there's a real account. Joining a game silently creates an
+   * anonymous user, so `user` alone says nothing about whether anyone signed
+   * in — treating the two as the same left guests being offered "Sign out"
+   * and turned away from the sign-in screen for already being "signed in".
+   */
+  isGuest: boolean
   loading: boolean
   configured: boolean
   signInWithGoogle: () => Promise<void>
@@ -62,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      isGuest: !user || user.isAnonymous,
       loading,
       configured: isFirebaseConfigured,
       async signInWithGoogle() {

@@ -18,8 +18,7 @@ export function JoinIdentityPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pin = '' } = useParams()
-  const { user } = useAuth()
-  const isGuest = !user || user.isAnonymous
+  const { user, isGuest } = useAuth()
   const { profile, loading: profileLoading } = useProfile(user?.uid, isGuest)
 
   const [nickname, setNickname] = useState('')

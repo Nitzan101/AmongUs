@@ -14,8 +14,7 @@ import { saveProfile, useProfile } from '../game/profile'
 export function ProfilePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
-  const isGuest = !user || user.isAnonymous
+  const { user, isGuest, loading: authLoading } = useAuth()
   const { profile, loading } = useProfile(user?.uid, isGuest)
 
   const [nickname, setNickname] = useState('')

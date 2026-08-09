@@ -25,7 +25,7 @@ export function LobbyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pin = '' } = useParams()
-  const { user } = useAuth()
+  const { user, isGuest } = useAuth()
   const { game, players, loading } = useGame(pin)
   const [copied, setCopied] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -37,10 +37,7 @@ export function LobbyPage() {
 
   // Only the host can switch word sets, so only their own sets are needed.
   const isHostUser = game?.hostId === user?.uid
-  const { sets } = useMyWordSets(
-    isHostUser ? user?.uid : undefined,
-    !user || user.isAnonymous,
-  )
+  const { sets } = useMyWordSets(isHostUser ? user?.uid : undefined, isGuest)
   const usableSets = sets.filter(
     (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
   )

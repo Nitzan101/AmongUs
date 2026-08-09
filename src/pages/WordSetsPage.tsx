@@ -13,8 +13,7 @@ import {
 export function WordSetsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
-  const isGuest = !user || user.isAnonymous
+  const { user, isGuest, loading: authLoading } = useAuth()
   const { sets, loading, reload } = useMyWordSets(user?.uid, isGuest)
 
   if (authLoading || loading) {

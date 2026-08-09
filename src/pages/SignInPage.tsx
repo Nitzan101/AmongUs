@@ -15,7 +15,7 @@ const inputClass =
 export function SignInPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, configured, signInWithGoogle, signInWithEmail, signUpWithEmail } =
+  const { isGuest, configured, signInWithGoogle, signInWithEmail, signUpWithEmail } =
     useAuth()
 
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
@@ -26,10 +26,12 @@ export function SignInPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // Once signed in, leave this screen.
+  // Once there's a real account, leave this screen. Checking `user` here
+  // locked guests out of signing in at all: joining a game makes an anonymous
+  // user, so anyone who had ever joined was bounced straight back home.
   useEffect(() => {
-    if (user) navigate('/', { replace: true })
-  }, [user, navigate])
+    if (!isGuest) navigate('/', { replace: true })
+  }, [isGuest, navigate])
 
   const isSignUp = mode === 'signUp'
 

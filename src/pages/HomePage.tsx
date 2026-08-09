@@ -9,13 +9,10 @@ import { findMyActiveGame, hasRememberedGame } from '../game/gameService'
 export function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, signOut, loading } = useAuth()
+  const { user, isGuest, signOut, loading } = useAuth()
   const [resuming, setResuming] = useState(hasRememberedGame)
 
-  // A guest has neither a display name nor an email, so without a fallback the
-  // greeting rendered as "Hi, !" — comma, space, nothing.
-  const displayName =
-    user?.displayName || user?.email?.split('@')[0] || t('auth.guest')
+  const displayName = user?.displayName || user?.email?.split('@')[0] || ''
 
   // If this device was mid-game (closed tab, phone locked, etc.), drop
   // straight back into it instead of showing the home screen. Guarded so a
@@ -92,7 +89,10 @@ export function HomePage() {
         </Button>
       </div>
 
-      {user ? (
+      {/* A guest gets the greeting but is offered a way *in*, not out: they
+          never signed in, so "Sign out" was nonsense — and it was the only
+          action they had. */}
+      {!isGuest ? (
         <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4">
           {/* dir="auto" picks the direction from the text itself, so a Hebrew
               name in an English greeting (or vice versa) keeps its punctuation
@@ -104,26 +104,24 @@ export function HomePage() {
             {t('auth.greeting', { name: displayName })}
           </p>
 
-          {!user.isAnonymous && (
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => navigate('/profile')}
-              >
-                <ProfileIcon />
-                {t('profile.title')}
-              </Button>
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => navigate('/sets')}
-              >
-                <WordSetsIcon />
-                {t('sets.title')}
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => navigate('/profile')}
+            >
+              <ProfileIcon />
+              {t('profile.title')}
+            </Button>
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => navigate('/sets')}
+            >
+              <WordSetsIcon />
+              {t('sets.title')}
+            </Button>
+          </div>
 
           <Button variant="ghost" fullWidth onClick={() => signOut()}>
             {t('auth.signOut')}
@@ -131,6 +129,13 @@ export function HomePage() {
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-line bg-surface-raised p-4 text-center">
+          {/* Only greet someone who's actually been playing as a guest; a
+              first-time visitor has no name to be greeted by. */}
+          {user && (
+            <p className="mb-1 font-bold text-content">
+              {t('auth.greeting', { name: t('auth.guest') })}
+            </p>
+          )}
           <p className="text-sm text-content-muted">{t('home.signInHint')}</p>
           <Button
             variant="ghost"

@@ -24,8 +24,7 @@ import type { Language } from '../i18n'
 export function CreateGamePage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
-  const isGuest = !user || user.isAnonymous
+  const { user, isGuest, loading: authLoading } = useAuth()
   const { profile, loading: profileLoading } = useProfile(user?.uid, isGuest)
 
   const [error, setError] = useState<string | null>(null)

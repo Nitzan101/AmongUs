@@ -418,6 +418,30 @@ Checked against a real two-game room: after a newcomer joined and a player left 
 newcomer was seated, had a turn and was alive, the leaver was gone, and the rotation still advanced
 by one.
 
+## 24. Guests are not signed in
+
+Joining a game silently creates an **anonymous** Firebase user, so `user` being non-null said
+nothing about whether anyone had signed in. Treating the two as the same left a guest in a state
+that was both at once: greeted by name and offered **Sign out**, while **Sign in** was unreachable
+— `SignInPage` redirected home for any `user`, so anyone who had ever joined a game could never
+reach the form. Tapping "Sign in to host" bounced straight back to the home screen.
+
+`AuthContext` now exposes **`isGuest`** (`!user || user.isAnonymous`) as the single answer, and the
+five screens that each re-derived it use that instead, so it cannot drift apart again.
+
+- The home screen keeps **"Hi, Guest!"** — a guest has a session worth acknowledging — but offers
+  a way *in* rather than out. Sign out belongs to real accounts.
+- A first-time visitor with no user at all gets no greeting; there is nobody to greet yet.
+- `SignInPage` now leaves only once there is a real account.
+
+**Known consequence, not yet handled:** signing in while a guest creates a *new* Firebase user, so
+the uid changes and the old anonymous identity is orphaned. A guest who signs in while sitting in
+a game will no longer match their player document and will have to rejoin. The proper fix is to
+upgrade the anonymous account in place (`linkWithPopup` / `linkWithCredential`, falling back to a
+normal sign-in on `auth/credential-already-in-use`), which preserves the uid. Deliberately left
+out of this change: it rewrites the sign-in paths, and those cannot be tested here without real
+Google and email credentials.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active
