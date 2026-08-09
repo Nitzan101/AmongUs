@@ -7,8 +7,7 @@
     "save": "Save",
     "language": "Language",
     "english": "English",
-    "hebrew": "עברית",
-    "comingSoon": "Coming soon"
+    "hebrew": "עברית"
   },
   "home": {
     "tagline": "Find the imposter. Or be the imposter.",
@@ -19,8 +18,6 @@
     "signInHint": "Sign in to host your own games. Joining never needs an account."
   },
   "create": {
-    "title": "Create a game",
-    "subtitle": "Set it up how you like, then invite your friends.",
     "mode": "Game mode",
     "modeHalf": "In person",
     "modeHalfDesc": "You say the words out loud. The app handles the secret words, turns, voting and scores.",
@@ -60,9 +57,7 @@
     "creating": "Creating…",
     "createError": "Could not create the game. Please try again.",
     "needAccountTitle": "Sign in to host",
-    "needAccountBody": "Creating a game needs a free account. Joining a game never does.",
-    "identityTitle": "Who are you?",
-    "identitySubtitle": "Pick your name and character for this game."
+    "needAccountBody": "Creating a game needs a free account. Joining a game never does."
   },
   "sets": {
     "title": "Word sets",
@@ -139,7 +134,6 @@
     "notFound": "This game doesn't exist.",
     "notInGame": "You're not in this game.",
     "starting": "The game is starting!",
-    "startingSoon": "The game screen arrives in the next milestone.",
     "pinLabel": "Game PIN",
     "shareLink": "Share link",
     "copied": "Copied",
@@ -153,7 +147,6 @@
     "you": "you",
     "host": "HOST",
     "kick": "Remove player",
-    "waiting": "Waiting for players to join…",
     "needMore": "Need at least {{count}} players to start.",
     "startGame": "Start game",
     "hostNote": "The host starts the game once everyone is in.",
@@ -345,5 +338,11 @@
     "rollEasy": "🎲 Easy",
     "rollMedium": "🎲 Medium",
     "rollHard": "🎲 Hard"
+  },
+  "unsaved": {
+    "title": "Leave without saving?",
+    "body": "Your changes haven't been saved. Leaving now discards them.",
+    "stay": "Keep editing",
+    "discard": "Discard changes"
   }
 }

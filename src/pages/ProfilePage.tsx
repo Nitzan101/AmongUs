@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { IdentityFields } from '../components/IdentityFields'
 import { ProfileIcon } from '../components/NavIcons'
+import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog'
+import { useUnsavedChanges } from '../game/useUnsavedChanges'
 import { useAuth } from '../auth/AuthContext'
 import { randomCharacter } from '../game/characters'
 import { saveProfile, useProfile } from '../game/profile'
@@ -21,12 +23,31 @@ export function ProfilePage() {
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  /** What was loaded, so "changed" doesn't just mean "filled in". */
+  const initial = useRef('')
+
   useEffect(() => {
     if (loading) return
-    if (profile?.nickname) setNickname(profile.nickname)
-    else if (user) setNickname(user.displayName || user.email?.split('@')[0] || '')
+    const startingName =
+      profile?.nickname ||
+      (user ? user.displayName || user.email?.split('@')[0] || '' : '')
+    const startingCharacter = profile?.character || character
+    setNickname(startingName)
     if (profile?.character) setCharacter(profile.character)
+    initial.current = JSON.stringify({
+      nickname: startingName.trim(),
+      character: startingCharacter,
+    })
+    // `character` is the random initial value, read once when the profile
+    // lands; including it would reset the form as soon as you pick another.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, loading, user])
+
+  const dirty =
+    initial.current !== '' &&
+    JSON.stringify({ nickname: nickname.trim(), character }) !== initial.current
+  // No `allowNext` here: saving stays on the page and resets the baseline.
+  const { blocked, stay, discard } = useUnsavedChanges(dirty)
 
   if (authLoading || loading) {
     return (
@@ -60,6 +81,11 @@ export function ProfilePage() {
     setSaved(false)
     try {
       await saveProfile(user!.uid, { nickname: nickname.trim(), character })
+      // Now saved, so this *is* the baseline — leaving shouldn't warn.
+      initial.current = JSON.stringify({
+        nickname: nickname.trim(),
+        character,
+      })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } finally {
@@ -91,6 +117,8 @@ export function ProfilePage() {
           {saved ? `✓ ${t('profile.saved')}` : t('profile.save')}
         </Button>
       </div>
+
+      {blocked && <UnsavedChangesDialog onStay={stay} onDiscard={discard} />}
     </div>
   )
 }

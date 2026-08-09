@@ -176,21 +176,7 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   - Open question: the numbered list also serves as the in-person reading order top-to-bottom. If
     the ring replaces it entirely, check the numbers stay legible on a small phone with 8 players —
     otherwise offer the ring *above* the list rather than instead of it.
-- **Warn before leaving unsaved edits:** "Back" in the header runs `navigate(-1)` unconditionally
-  (`Layout.tsx`), so a half-written word set is lost without a word of warning. Ask for
-  confirmation when the form is dirty, and leave silently when it isn't — a prompt on an untouched
-  form trains people to dismiss it. Notes:
-  - **Where it bites:** the word-set editor above all (long forms, easy to lose a lot), then the
-    profile screen, then the create-game flow.
-  - **The Back button lives in the shared layout**, not in the pages that own the form state, so
-    this needs a way for a page to say "I'm dirty" — a small context, or moving Back into the
-    pages. The context is less duplication; think about it before writing.
-  - **Dirty means changed, not non-empty.** Compare against what was loaded, so re-saving an
-    untouched existing set doesn't prompt. The editor already appends spare blank rows as you
-    type, and those must not count as changes.
-  - **The browser back button and swipe-back sidestep any in-app dialog.** Covering those needs a
-    router blocker (and `beforeunload` for tab close/refresh), which is a bigger job — worth
-    deciding whether to cover the in-app button only, or all the ways out.
+- ✅ **Warn before leaving unsaved edits — BUILT.** See §20.
 - ✅ **Navigation icons for profile and word sets — BUILT.** `src/components/NavIcons.tsx`: a
   person glyph for the profile and a stack-of-cards glyph for the sets (a folder's tab detail
   vanishes at 18px). Inline SVG stroked with `currentColor`, so they inherit the button's colour
@@ -351,6 +337,30 @@ split by urgency.
   the wrong default half the time, which is exactly why the lobby stays editable.
 - `OPTION_SPECS` in `src/game/gameOptions.ts` describes every option once, so the panel is a loop
   rather than six near-identical blocks, and nothing can drift out of sync.
+
+## 20. Guarding unsaved edits
+
+Leaving the word-set editor used to discard a half-written set in silence.
+
+- **Dirty means *changed*, not *non-empty*.** Both guarded pages keep a `useRef` snapshot of what
+  was loaded and compare against it, so opening a set and touching nothing never prompts —
+  a prompt on an untouched form only teaches people to dismiss prompts.
+- **The editor's spare blank row must not count.** It appends one as you type, so the snapshot
+  runs rows through `cleanEntries` first. Verified: typing into the name and a word row, then
+  clearing both, leaves an extra blank row behind and still does not prompt.
+- **Three exits, three mechanisms**, because no single one covers them all:
+  - **The header's Back button** — a page registers a guard with `LeaveGuardProvider`, and
+    `Layout` asks it before navigating. `useBlocker` was tried first and **did not intercept the
+    `navigate(-1)` this button performs** — tested twice, including with a synthetic history entry
+    — so the button is guarded directly rather than trusting a mechanism that misses the main
+    case. The guard lives in a ref: registering must not re-render Layout.
+  - **Other in-app navigation** — `useBlocker` is kept, since it does catch pushes.
+  - **Closing or reloading the tab** — `beforeunload`. Chrome logs "blocked attempt to show a
+    beforeunload confirmation panel" under automation, which is how we know it is armed.
+- **Saving is not an escape to warn about:** `allowNext()` stands the guard down before the save
+  path navigates, and the profile screen resets its baseline in place since it stays put.
+- Applied to the **word-set editor** and the **profile screen**. Not the create-game flow, which
+  no longer has a form (§19), nor the lobby settings panel, which saves on every tap.
 
 ## 14. Leaving a game
 

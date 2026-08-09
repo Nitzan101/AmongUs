@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
+import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog'
 import { useAuth } from '../auth/AuthContext'
+import { useUnsavedChanges } from '../game/useUnsavedChanges'
 import {
   cleanEntries,
   createWordSet,
@@ -23,6 +25,26 @@ function emptyRows(n: number): WordSetEntry[] {
 const inputClass =
   'w-full rounded-xl border-2 border-line bg-surface-raised px-3 py-2 text-content outline-none focus:border-brand-500'
 
+/**
+ * A comparable fingerprint of the form's meaningful content.
+ *
+ * Runs the rows through `cleanEntries` first, so the spare blank row the
+ * editor keeps appending as you type never registers as an edit — otherwise
+ * simply opening a set and typing one letter into the last row, then deleting
+ * it, would leave the form looking permanently dirty.
+ */
+function snapshot(
+  name: string,
+  icon: string,
+  entries: WordSetEntry[],
+): string {
+  return JSON.stringify({
+    name: name.trim(),
+    icon,
+    entries: cleanEntries(entries),
+  })
+}
+
 /** Create or edit a themed word set. */
 export function WordSetEditPage() {
   const { t } = useTranslation()
@@ -38,6 +60,13 @@ export function WordSetEditPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /**
+   * What was loaded, to compare against. Held as a ref rather than state
+   * because it never drives a render — it exists only to answer "has this
+   * actually changed?", which must not be confused with "is this non-empty?".
+   */
+  const initial = useRef(snapshot('', DEFAULT_SET_ICON, []))
+
   useEffect(() => {
     if (isNew || !id) return
     let cancelled = false
@@ -46,6 +75,11 @@ export function WordSetEditPage() {
         if (cancelled || !set) return
         setName(set.name)
         setIcon(set.icon || DEFAULT_SET_ICON)
+        initial.current = snapshot(
+          set.name,
+          set.icon || DEFAULT_SET_ICON,
+          set.entries,
+        )
         setRows([
           ...set.entries.map((e) => ({
             main: e.main,
@@ -78,6 +112,9 @@ export function WordSetEditPage() {
   const filled = cleanEntries(rows)
   const canSave = name.trim().length > 0 && filled.length >= MIN_SET_ENTRIES
 
+  const dirty = snapshot(name, icon, rows) !== initial.current
+  const { blocked, stay, discard, allowNext } = useUnsavedChanges(dirty)
+
   async function handleSave() {
     if (!user) return
     setBusy(true)
@@ -85,6 +122,8 @@ export function WordSetEditPage() {
     try {
       if (isNew) await createWordSet(user.uid, name, rows, icon)
       else await updateWordSet(id!, name, rows, icon)
+      // Leaving *because* we saved isn't something to warn about.
+      allowNext()
       navigate('/sets')
     } catch {
       setError(t('sets.saveError'))
@@ -202,6 +241,10 @@ export function WordSetEditPage() {
           {busy ? t('sets.saving') : t('sets.save')}
         </Button>
       </div>
+
+      {blocked && (
+        <UnsavedChangesDialog onStay={stay} onDiscard={discard} />
+      )}
     </div>
   )
 }

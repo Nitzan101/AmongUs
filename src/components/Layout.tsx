@@ -3,12 +3,30 @@ import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isRtl } from '../i18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { LeaveGuardProvider } from './LeaveGuard'
+import { useLeaveGuard } from '../game/leaveGuardContext'
 
 export function Layout() {
+  return (
+    <LeaveGuardProvider>
+      <LayoutShell />
+    </LeaveGuardProvider>
+  )
+}
+
+function LayoutShell() {
   const { i18n, t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
+  const ctx = useLeaveGuard()
   const language = i18n.resolvedLanguage ?? 'en'
+
+  // A page holding unsaved edits can intercept this and confirm first.
+  function goBack() {
+    const proceed = () => navigate(-1)
+    if (ctx?.guard.current?.(proceed)) return
+    proceed()
+  }
 
   // Keep the document's direction and language in sync with the chosen language.
   useEffect(() => {
@@ -29,7 +47,7 @@ export function Layout() {
           ) : (
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={goBack}
               className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-content-muted hover:text-content"
             >
               <span aria-hidden className="rtl:-scale-x-100">
