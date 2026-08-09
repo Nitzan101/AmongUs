@@ -151,6 +151,10 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   ("Guest" / "אורח") when there's no display name or email, instead of rendering "Hi, !". The
   guest's *game* nickname is deliberately not reused: it's chosen per game rather than stored on
   the account, so there's nothing to show before they join one.
+- **Stats & badges:** avg placement, "won 5 games", "led 3 games", "1-year account", etc. Needs a
+  per-account stats store updated at game end; account users only. Worth logging the chosen game
+  options at the same time — nothing currently measures which of the six host options anyone ever
+  changes, so trimming them would be guesswork.
 - **Share/publish a game or word set:** shareable link to copy a themed set into your own account
   and host with it — ties into custom word sets (Milestone 7).
 - ✅ **Emoji for a word set — BUILT.** The creator picks from a 16-emoji spread when editing a
