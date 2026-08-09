@@ -30,7 +30,13 @@ export interface Profile {
  */
 export type SavedGameOptions = Pick<
   GameOptions,
-  'mode' | 'difficulty' | 'scoring' | 'guess' | 'imposterAware' | 'language'
+  | 'mode'
+  | 'difficulty'
+  | 'scoring'
+  | 'guess'
+  | 'imposterAware'
+  | 'turnCircle'
+  | 'language'
 >
 
 export async function getProfile(uid: string): Promise<Profile | null> {

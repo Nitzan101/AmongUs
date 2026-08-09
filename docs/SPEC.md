@@ -137,9 +137,8 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   used to be told "this game has already started" — their own game — because the status check
   ran before any membership check.
 
-**Remaining, lower-priority:**
-- **Join in progress:** a *new* player is still blocked ("already started"). Future: let
-  latecomers wait and join the next game (the room already returns to a lobby between games).
+**Also resolved:**
+- ✅ **Join in progress** — see §25. A latecomer is no longer turned away.
 
 ## 10. Future features backlog
 
@@ -166,20 +165,7 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
 - ✅ **Imposter-awareness option — BUILT.** See §18.
 - **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
   "100 is few" feedback, so both banks are worth another authoring pass.
-- **Turn circle in half-virtual mode (host option, default off):** in-person games currently show
-  the turn order as a vertical numbered list of `PlayerRow`s; the ring drawing is full-virtual
-  only. Offer the ring in half-virtual too — it mirrors how the group is actually sitting, which a
-  list doesn't. Default stays the list, matching today's behaviour.
-  - **Order only, no "now speaking".** `TurnCircle` highlights the current player from the clue
-    documents, and in-person play produces none — the app cannot know who has spoken. So this
-    needs a variant with the ring and the numbers but no highlight, no ✓ marks, and an empty
-    centre (or the round number). That is the whole difference from the existing component.
-  - Eliminated and disconnected styling still applies; both are known from game state, not clues.
-  - Sits alongside `mode` in `GameOptions` as a display preference, so it needs a flag, a
-    create-screen option, and a branch in `CluePhase` where the list is rendered today.
-  - Open question: the numbered list also serves as the in-person reading order top-to-bottom. If
-    the ring replaces it entirely, check the numbers stay legible on a small phone with 8 players —
-    otherwise offer the ring *above* the list rather than instead of it.
+- ✅ **Turn circle in half-virtual mode — BUILT.** See §26.
 - ✅ **Warn before leaving unsaved edits — BUILT.** See §20.
 - ✅ **Navigation icons for profile and word sets — BUILT.** `src/components/NavIcons.tsx`: a
   person glyph for the profile and a stack-of-cards glyph for the sets (a folder's tab detail
@@ -445,6 +431,46 @@ upgrade the anonymous account in place (`linkWithPopup` / `linkWithCredential`, 
 normal sign-in on `auth/credential-already-in-use`), which preserves the uid. Deliberately left
 out of this change: it rewrites the sign-in paths, and those cannot be tested here without real
 Google and email credentials.
+
+## 25. Joining a game already in progress
+
+Latecomers used to be refused with "this game has already started" and left with nothing to do
+until the whole room finished. At a party somebody always arrives halfway through, so they now
+join straight away, watch the round out, and are dealt into the next one.
+
+- `checkGameJoinable` returns `inProgress` instead of throwing, and the identity screen says so
+  **before** anything is filled in, so nobody joins expecting to play immediately.
+- **No game-state surgery.** The newcomer is simply absent from the running round's `turnOrder`
+  and `aliveIds`, which every phase already handles for spectators. `startGame` reconciles seating
+  from the real player list (§23), so the next game seats them without any extra work — that fix
+  is what made this small.
+- **"Waiting" is not "eliminated".** Both were previously just "not in `aliveIds`", which would
+  have told a newcomer they'd been voted out of a game they never played. Absence from
+  `turnOrder` entirely is the discriminator, and it gets its own message in the clue and voting
+  phases.
+- They hold no secret, get no clue input, and cast no vote, so `revealVotes` still fires on the
+  real players' votes alone. They score nothing for the round they watched, since scoring runs
+  off the seating the game was dealt with.
+
+Verified end to end: a newcomer added mid-round was absent from game 1's turn order, then in game
+2 appeared in the seating, the turn order, `aliveIds`, and had a secret dealt.
+
+## 26. Turn circle in person
+
+The ring drawing was fully-online only; in-person games got a numbered list. The ring mirrors how
+the group is actually sitting, so it's now a host option — **default off**, keeping the list.
+
+The two variants differ by what the app can honestly know:
+
+- **`live`** (online) — clues are typed, so it knows whose turn it is: that seat pulses and
+  everyone who has spoken gets a ✓.
+- **`order`** (in person) — words are spoken aloud and the app hears none of it. So it shows the
+  seating and **who begins**, and nothing else: no ✓ marks, and no pulse, because pulsing means
+  "we're waiting on you" and the app is in no position to say that.
+
+Hidden from the settings panel in online mode, where the ring is always used and there is nothing
+to choose. Eliminated and disconnected styling still applies in both, since those come from game
+state rather than clues.
 
 ## 14. Leaving a game
 

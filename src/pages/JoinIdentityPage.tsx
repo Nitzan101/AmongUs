@@ -27,6 +27,7 @@ export function JoinIdentityPage() {
   const [error, setError] = useState<string | null>(null)
   const [checking, setChecking] = useState(true)
   const [blocked, setBlocked] = useState<string | null>(null)
+  const [inProgress, setInProgress] = useState(false)
 
   // Re-check the PIN (share links arrive here without passing through step 1).
   // A player who is already in the game skips this screen entirely — a shared
@@ -34,12 +35,13 @@ export function JoinIdentityPage() {
   useEffect(() => {
     let cancelled = false
     checkGameJoinable(pin)
-      .then(({ alreadyJoined }) => {
+      .then(({ alreadyJoined, inProgress: running }) => {
         if (cancelled) return
         if (alreadyJoined) {
           navigate(`/lobby/${pin}`, { replace: true })
           return
         }
+        setInProgress(running)
         setChecking(false)
       })
       .catch((err) => {
@@ -102,6 +104,14 @@ export function JoinIdentityPage() {
       <p className="mt-1 text-content-muted">
         {t('join.identitySubtitle', { pin })}
       </p>
+
+      {/* Say so before they fill anything in, so nobody joins expecting to
+          play immediately and thinks the app is broken. */}
+      {inProgress && (
+        <p className="mt-4 rounded-xl bg-sunny-400/15 px-3 py-2 text-sm font-medium text-content">
+          {t('join.inProgress')}
+        </p>
+      )}
 
       <div className="mt-6">
         <IdentityFields

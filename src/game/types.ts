@@ -36,6 +36,16 @@ export interface GameOptions {
    */
   wordSetId?: string | null
   /**
+   * In-person games only: draw the turn order as the ring the online mode
+   * uses, instead of the numbered list. Purely how the order is displayed —
+   * the app still can't tell who has spoken aloud, so the ring shows the
+   * seating and who begins, and nothing else.
+   *
+   * Optional; a missing value means the list, which is what every game before
+   * this option used.
+   */
+  turnCircle?: boolean
+  /**
    * Whether the imposter is told they're the imposter.
    *
    * Default (`true`) is the classic game: the imposter knows, and plays a

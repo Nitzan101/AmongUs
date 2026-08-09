@@ -215,11 +215,16 @@ export async function updateGameOptions(
 export interface JoinCheck {
   /** True when this device is already a player — skip the identity step. */
   alreadyJoined: boolean
+  /**
+   * True when a round is already running. Joining still works; the newcomer
+   * watches this one out and is dealt into the next.
+   */
+  inProgress: boolean
 }
 
 /**
- * Check a PIN before asking for a name/character, so the player finds out
- * immediately if the game doesn't exist or has already started.
+ * Check a PIN before asking for a name/character, so a wrong PIN is caught
+ * before anyone fills in a name.
  *
  * Someone who is *already* a player is let straight back in, even mid-game:
  * that's the rejoin path (tapping the share link again, or reopening after a
@@ -235,14 +240,27 @@ export async function checkGameJoinable(pin: string): Promise<JoinCheck> {
   const mine = await getDoc(playerRef(pin, uid))
   if (mine.exists()) {
     rememberGame(pin)
-    return { alreadyJoined: true }
+    return { alreadyJoined: true, inProgress: false }
   }
 
-  if ((snap.data() as Game).status !== 'lobby') throw new GameError('game-started')
-  return { alreadyJoined: false }
+  // A running game no longer turns latecomers away. At a party someone always
+  // arrives halfway through, and being told to wait outside until the whole
+  // room finishes is worse than watching a round. They sit this one out and
+  // are dealt into the next, which the room returns to a lobby for anyway.
+  return {
+    alreadyJoined: false,
+    inProgress: (snap.data() as Game).status !== 'lobby',
+  }
 }
 
-/** Join an existing game as a (possibly anonymous) player. */
+/**
+ * Join an existing game as a (possibly anonymous) player.
+ *
+ * Joining mid-round is allowed. The new player simply isn't in the running
+ * round's `turnOrder` or `aliveIds`, so they watch it out; `startGame`
+ * reconciles the seating from the real player list, so the next game deals
+ * them in with a seat of their own.
+ */
 export async function joinGame(
   pin: string,
   name: string,
@@ -253,7 +271,6 @@ export async function joinGame(
 
   const snap = await getDoc(gameRef(pin))
   if (!snap.exists()) throw new GameError('game-not-found')
-  if ((snap.data() as Game).status !== 'lobby') throw new GameError('game-started')
 
   // Reject a nickname already taken by someone else.
   const players = await getDocs(playersRef(pin))

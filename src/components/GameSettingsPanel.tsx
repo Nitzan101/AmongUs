@@ -79,7 +79,10 @@ export function GameSettingsPanel({
 
   const usingCustomSet = Boolean(game.wordSetId)
   const visibleSpecs = OPTION_SPECS.filter(
-    (spec) => !(spec.builtInBankOnly && usingCustomSet),
+    (spec) =>
+      !(spec.builtInBankOnly && usingCustomSet) &&
+      // The online mode always draws the ring, so there is nothing to choose.
+      !(spec.halfVirtualOnly && game.mode !== 'half'),
   )
 
   // Read-only: one compact line per setting, rather than the full cards.

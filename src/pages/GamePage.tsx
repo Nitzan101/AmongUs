@@ -33,6 +33,9 @@ import type { Clue, Player, Round, Secret, Vote } from '../game/types'
 
 type PlayerMap = Map<string, Player>
 
+/** Stable empty set, so the ring's memoisation isn't defeated by a new one. */
+const EMPTY_IDS: Set<string> = new Set()
+
 function WordCard({
   secret,
   imposterAware,
@@ -325,6 +328,7 @@ function CluePhase({
   isFullVirtual,
   clues,
   imposterAware,
+  turnCircle,
 }: {
   pin: string
   round: Round
@@ -336,9 +340,14 @@ function CluePhase({
   isFullVirtual: boolean
   clues: Clue[]
   imposterAware: boolean
+  /** In-person only: draw the order as a ring instead of a numbered list. */
+  turnCircle: boolean
 }) {
   const { t } = useTranslation()
-  const iAmEliminated = !round.aliveIds.includes(uid)
+  // Absent from the turn order entirely means this game was dealt before they
+  // arrived — a very different thing from being voted out of it.
+  const iAmWaiting = !round.turnOrder.includes(uid)
+  const iAmEliminated = !iAmWaiting && !round.aliveIds.includes(uid)
   const order = round.turnOrder
     .map((id) => byId.get(id))
     .filter((p): p is Player => Boolean(p))
@@ -358,7 +367,17 @@ function CluePhase({
       </p>
 
       <div className="mt-4">
-        {iAmEliminated ? (
+        {iAmWaiting ? (
+          <div className="rounded-2xl border-2 border-dashed border-brand-400 p-6 text-center">
+            <div className="text-3xl">👋</div>
+            <div className="mt-1 font-bold text-content">
+              {t('game.waitingNextTitle')}
+            </div>
+            <div className="mt-1 text-sm text-content-muted">
+              {t('game.waitingNextBody')}
+            </div>
+          </div>
+        ) : iAmEliminated ? (
           <div className="rounded-2xl border-2 border-dashed border-line p-6 text-center text-content-muted">
             {t('game.youAreEliminated')}
           </div>
@@ -393,7 +412,7 @@ function CluePhase({
             />
           </div>
 
-          {!iAmEliminated && !allSubmitted && (
+          {!iAmEliminated && !iAmWaiting && !allSubmitted && (
             <div className="mt-4">
               <ClueInput
                 pin={pin}
@@ -416,19 +435,38 @@ function CluePhase({
           <h2 className="mt-6 px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
             {t('game.turnOrder')}
           </h2>
-          <ol className="mt-2 flex flex-col gap-2">
-            {order.map((p, i) => (
-              <li key={p.id}>
-                <PlayerRow
-                  player={p}
-                  isYou={p.id === uid}
-                  index={i + 1}
-                  disconnected={staleIds.has(p.id)}
-                  eliminated={!round.aliveIds.includes(p.id)}
-                />
-              </li>
-            ))}
-          </ol>
+          {/* In person the app hears nothing, so the ring shows the seating and
+              who begins — never a "now speaking" highlight it can't know. */}
+          {turnCircle ? (
+            <div className="mt-2">
+              <TurnCircle
+                variant="order"
+                order={order}
+                doneIds={EMPTY_IDS}
+                uid={uid}
+                eliminatedIds={
+                  new Set(
+                    round.turnOrder.filter((id) => !round.aliveIds.includes(id)),
+                  )
+                }
+                staleIds={staleIds}
+              />
+            </div>
+          ) : (
+            <ol className="mt-2 flex flex-col gap-2">
+              {order.map((p, i) => (
+                <li key={p.id}>
+                  <PlayerRow
+                    player={p}
+                    isYou={p.id === uid}
+                    index={i + 1}
+                    disconnected={staleIds.has(p.id)}
+                    eliminated={!round.aliveIds.includes(p.id)}
+                  />
+                </li>
+              ))}
+            </ol>
+          )}
         </>
       )}
 
@@ -477,6 +515,8 @@ function VotingPhase({
 }) {
   const { t } = useTranslation()
   const meAlive = round.aliveIds.includes(uid)
+  // Joined after this game was dealt — watching, not eliminated.
+  const iAmWaiting = !round.turnOrder.includes(uid)
   const myVote = votes.find((v) => v.voter === uid)?.target
   const candidates = (round.candidates ?? round.aliveIds).filter(
     (id) => id !== uid,
@@ -529,7 +569,7 @@ function VotingPhase({
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border-2 border-dashed border-line p-6 text-center text-content-muted">
-          {t('game.youAreOut')}
+          {iAmWaiting ? t('game.waitingNextBody') : t('game.youAreOut')}
         </div>
       )}
 
@@ -1035,6 +1075,8 @@ export function GamePage() {
   // Games created before this option existed have no field; those played the
   // classic way, so a missing value means "the imposter knows".
   const imposterAware = game?.imposterAware !== false
+  // Older rooms have no such field, and those all used the numbered list.
+  const turnCircle = game?.turnCircle === true
   const clues = useClues(pin, isFullVirtual)
   const [leaving, setLeaving] = useState(false)
 
@@ -1145,6 +1187,7 @@ export function GamePage() {
           isFullVirtual={isFullVirtual}
           clues={clues}
           imposterAware={imposterAware}
+          turnCircle={turnCircle}
         />
       )
       break

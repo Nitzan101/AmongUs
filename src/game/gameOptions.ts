@@ -23,6 +23,8 @@ export interface OptionSpec<K extends keyof GameOptions> {
   }[]
   /** Hidden while the host is dealing from a custom set. */
   builtInBankOnly?: boolean
+  /** Hidden unless the game is played in person. */
+  halfVirtualOnly?: boolean
 }
 
 const MODE_SPEC: OptionSpec<'mode'> = {
@@ -40,6 +42,26 @@ const MODE_SPEC: OptionSpec<'mode'> = {
       icon: '📱',
       titleKey: 'create.modeFull',
       descKey: 'create.modeFullDesc',
+    },
+  ],
+}
+
+const TURN_DISPLAY_SPEC: OptionSpec<'turnCircle'> = {
+  key: 'turnCircle',
+  labelKey: 'create.turnDisplay',
+  halfVirtualOnly: true,
+  values: [
+    {
+      value: false,
+      icon: '📋',
+      titleKey: 'create.turnDisplayList',
+      descKey: 'create.turnDisplayListDesc',
+    },
+    {
+      value: true,
+      icon: '⭕',
+      titleKey: 'create.turnDisplayCircle',
+      descKey: 'create.turnDisplayCircleDesc',
     },
   ],
 }
@@ -157,6 +179,7 @@ const GUESS_SPEC: OptionSpec<'guess'> = {
  */
 export const OPTION_SPECS: readonly OptionSpec<keyof GameOptions>[] = [
   MODE_SPEC,
+  TURN_DISPLAY_SPEC,
   WORD_LANGUAGE_SPEC,
   DIFFICULTY_SPEC,
   AWARENESS_SPEC,
@@ -170,12 +193,14 @@ export function selectedValue(
   options: GameOptions,
 ) {
   const current = options[spec.key]
-  return (
-    spec.values.find((v) => v.value === current) ??
-    // `imposterAware` is absent on rooms made before that option existed, and
-    // those played the classic way.
-    (spec.key === 'imposterAware' ? spec.values[0] : undefined)
-  )
+  const found = spec.values.find((v) => v.value === current)
+  if (found) return found
+  // Booleans added later are absent on older rooms; fall back to the value
+  // those rooms behaved as, which is the first one listed in each spec.
+  if (spec.key === 'imposterAware' || spec.key === 'turnCircle') {
+    return spec.values[0]
+  }
+  return undefined
 }
 
 /**
@@ -190,6 +215,7 @@ export function defaultGameOptions(uiLanguage: Language): GameOptions {
     scoring: 'teamRace',
     guess: 'final',
     imposterAware: true,
+    turnCircle: false,
     wordSetId: null,
   }
 }
@@ -213,6 +239,7 @@ export function optionsFromProfile(
     scoring: saved.scoring ?? base.scoring,
     guess: saved.guess ?? base.guess,
     imposterAware: saved.imposterAware ?? base.imposterAware,
+    turnCircle: saved.turnCircle ?? base.turnCircle,
   }
 }
 
@@ -230,5 +257,6 @@ export function toSavedOptions(options: GameOptions): SavedGameOptions {
     scoring: options.scoring,
     guess: options.guess,
     imposterAware: options.imposterAware ?? true,
+    turnCircle: options.turnCircle ?? false,
   }
 }

@@ -57,7 +57,12 @@
     "creating": "Creating…",
     "createError": "Could not create the game. Please try again.",
     "needAccountTitle": "Sign in to host",
-    "needAccountBody": "Creating a game needs a free account. Joining a game never does."
+    "needAccountBody": "Creating a game needs a free account. Joining a game never does.",
+    "turnDisplay": "How to show the turn order",
+    "turnDisplayList": "Numbered list",
+    "turnDisplayListDesc": "A simple list, easy to read top to bottom.",
+    "turnDisplayCircle": "Circle",
+    "turnDisplayCircleDesc": "A ring like the table you are sitting at, marking who starts."
   },
   "sets": {
     "title": "Word sets",
@@ -126,7 +131,8 @@
       "emptyName": "Pick a nickname first.",
       "notConfigured": "Not connected yet. (Firebase setup in progress.)",
       "generic": "Could not join. Please try again."
-    }
+    },
+    "inProgress": "A game is in progress. You can join now and play the next one."
   },
   "lobby": {
     "title": "Game lobby",
@@ -246,7 +252,10 @@
       "guessBonus": "Correct final guess",
       "guessSteal": "Stole the win with a correct guess",
       "guessStolen": "Win stolen by the imposter's guess"
-    }
+    },
+    "startsWith": "Starts",
+    "waitingNextTitle": "You're in for the next game",
+    "waitingNextBody": "This game started before you joined, so sit back and watch. You'll be dealt in when the next one begins."
   },
   "rules": {
     "title": "How to play",

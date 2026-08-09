@@ -2,9 +2,16 @@ import { useTranslation } from 'react-i18next'
 import type { Player } from '../game/types'
 
 /**
- * Players arranged in a ring, the way they'd sit around a table, with the
- * player whose turn it is highlighted and pulsing. Everyone sees the same
- * picture, so the order — and who the group is waiting on — is unambiguous.
+ * Players arranged in a ring, the way they'd sit around a table.
+ *
+ * Two variants, because the app knows different things in each mode:
+ *
+ * - **`live`** (fully online) — clues are typed, so it knows exactly whose turn
+ *   it is: that player is highlighted and pulsing, and everyone who has spoken
+ *   gets a ✓.
+ * - **`order`** (in person) — words are spoken aloud and the app hears none of
+ *   it, so it can only show the seating and who begins. No pulse: nobody is
+ *   being waited on by the app, and a pulsing seat would imply otherwise.
  */
 export function TurnCircle({
   order,
@@ -13,32 +20,37 @@ export function TurnCircle({
   uid,
   eliminatedIds,
   staleIds,
+  variant = 'live',
 }: {
   /** Players in clue-giving order. */
   order: Player[]
-  /** Whose turn it is now (undefined once everyone has spoken). */
+  /** Whose turn it is now (undefined once everyone has spoken). `live` only. */
   currentTurnId?: string
-  /** Players who have already given a clue this round. */
+  /** Players who have already given a clue this round. `live` only. */
   doneIds: Set<string>
   uid: string
   eliminatedIds: Set<string>
   staleIds: Set<string>
+  variant?: 'live' | 'order'
 }) {
   const { t } = useTranslation()
   const n = order.length
-  const current = order.find((p) => p.id === currentTurnId)
+  const isLive = variant === 'live'
+  // In person the app can't know who is speaking, so it marks who starts.
+  const highlightId = isLive ? currentTurnId : order[0]?.id
+  const current = order.find((p) => p.id === highlightId)
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[19rem]">
       {/* The table */}
       <div className="absolute inset-[18%] rounded-full border-2 border-dashed border-line" />
 
-      {/* Whose turn, in the middle */}
+      {/* Whose turn it is, or who begins */}
       <div className="absolute inset-[18%] flex flex-col items-center justify-center px-2 text-center">
         {current ? (
           <>
             <span className="text-xs font-bold uppercase tracking-wide text-content-muted">
-              {t('game.nowSpeaking')}
+              {isLive ? t('game.nowSpeaking') : t('game.startsWith')}
             </span>
             <span className="mt-1 text-3xl">{current.character}</span>
             <span className="mt-0.5 line-clamp-2 text-sm font-black text-content">
@@ -61,8 +73,9 @@ export function TurnCircle({
         const radius = 41
         const left = 50 + radius * Math.cos(angle)
         const top = 50 + radius * Math.sin(angle)
-        const isCurrent = p.id === currentTurnId
-        const hasSpoken = doneIds.has(p.id)
+        const isCurrent = p.id === highlightId
+        // In person nobody has "spoken" as far as the app is concerned.
+        const hasSpoken = isLive && doneIds.has(p.id)
         const isOut = eliminatedIds.has(p.id)
 
         return (
@@ -75,7 +88,10 @@ export function TurnCircle({
               className={
                 'relative flex h-12 w-12 items-center justify-center rounded-full border-2 text-2xl transition-all ' +
                 (isCurrent
-                  ? 'scale-110 animate-suspense-pulse border-brand-500 bg-brand-50 shadow-lg shadow-brand-500/30 dark:bg-brand-500/20'
+                  ? 'scale-110 border-brand-500 bg-brand-50 shadow-lg shadow-brand-500/30 dark:bg-brand-500/20' +
+                    // Pulsing means "we're waiting on you", which is only true
+                    // when the app actually knows whose turn it is.
+                    (isLive ? ' animate-suspense-pulse' : '')
                   : hasSpoken
                     ? 'border-brand-300 bg-surface-raised'
                     : 'border-line bg-surface-raised') +
