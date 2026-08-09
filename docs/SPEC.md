@@ -169,6 +169,20 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   the confusing word.
 - **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
   "100 is few" feedback, so both banks are worth another authoring pass.
+- **Turn circle in half-virtual mode (host option, default off):** in-person games currently show
+  the turn order as a vertical numbered list of `PlayerRow`s; the ring drawing is full-virtual
+  only. Offer the ring in half-virtual too — it mirrors how the group is actually sitting, which a
+  list doesn't. Default stays the list, matching today's behaviour.
+  - **Order only, no "now speaking".** `TurnCircle` highlights the current player from the clue
+    documents, and in-person play produces none — the app cannot know who has spoken. So this
+    needs a variant with the ring and the numbers but no highlight, no ✓ marks, and an empty
+    centre (or the round number). That is the whole difference from the existing component.
+  - Eliminated and disconnected styling still applies; both are known from game state, not clues.
+  - Sits alongside `mode` in `GameOptions` as a display preference, so it needs a flag, a
+    create-screen option, and a branch in `CluePhase` where the list is rendered today.
+  - Open question: the numbered list also serves as the in-person reading order top-to-bottom. If
+    the ring replaces it entirely, check the numbers stay legible on a small phone with 8 players —
+    otherwise offer the ring *above* the list rather than instead of it.
 - **Warn before leaving unsaved edits:** "Back" in the header runs `navigate(-1)` unconditionally
   (`Layout.tsx`), so a half-written word set is lost without a word of warning. Ask for
   confirmation when the form is dirty, and leave silently when it isn't — a prompt on an untouched
