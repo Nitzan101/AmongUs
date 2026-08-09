@@ -164,6 +164,21 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   the confusing word.
 - **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
   "100 is few" feedback, so both banks are worth another authoring pass.
+- **Warn before leaving unsaved edits:** "Back" in the header runs `navigate(-1)` unconditionally
+  (`Layout.tsx`), so a half-written word set is lost without a word of warning. Ask for
+  confirmation when the form is dirty, and leave silently when it isn't — a prompt on an untouched
+  form trains people to dismiss it. Notes:
+  - **Where it bites:** the word-set editor above all (long forms, easy to lose a lot), then the
+    profile screen, then the create-game flow.
+  - **The Back button lives in the shared layout**, not in the pages that own the form state, so
+    this needs a way for a page to say "I'm dirty" — a small context, or moving Back into the
+    pages. The context is less duplication; think about it before writing.
+  - **Dirty means changed, not non-empty.** Compare against what was loaded, so re-saving an
+    untouched existing set doesn't prompt. The editor already appends spare blank rows as you
+    type, and those must not count as changes.
+  - **The browser back button and swipe-back sidestep any in-app dialog.** Covering those needs a
+    router blocker (and `beforeunload` for tab close/refresh), which is a bigger job — worth
+    deciding whether to cover the in-app button only, or all the ways out.
 - ✅ **Navigation icons for profile and word sets — BUILT.** `src/components/NavIcons.tsx`: a
   person glyph for the profile and a stack-of-cards glyph for the sets (a folder's tab detail
   vanishes at 18px). Inline SVG stroked with `currentColor`, so they inherit the button's colour
