@@ -164,6 +164,53 @@ export async function createGame(
   return pin
 }
 
+/**
+ * Rename yourself, or change your character, from the lobby.
+ *
+ * The host never chose either when creating the room — that screen was traded
+ * away so the share link appears in one tap — so this is where they fix a
+ * random animal or a name taken from their email address. Players who joined
+ * normally can correct a typo the same way.
+ */
+export async function updatePlayerIdentity(
+  pin: string,
+  uid: string,
+  name: string,
+  character: string,
+): Promise<void> {
+  requireDb()
+  const trimmed = name.trim()
+  if (!trimmed) throw new GameError('empty-name')
+
+  // Same clash rule as joining: two players with one name makes voting by
+  // name ambiguous.
+  const players = await getDocs(playersRef(pin))
+  const clash = players.docs.some(
+    (d) =>
+      d.id !== uid &&
+      (d.data() as Player).name.trim().toLowerCase() === trimmed.toLowerCase(),
+  )
+  if (clash) throw new GameError('name-taken')
+
+  await updateDoc(playerRef(pin, uid), { name: trimmed, character })
+}
+
+/**
+ * Change a room's settings from the lobby (host only, enforced by the rules).
+ *
+ * Safe to do while players trickle in: `startGame` reads the game document
+ * fresh when it deals, so whatever is set at the moment Start is pressed is
+ * what the game uses. Callers must keep this to the lobby — changing anything
+ * mid-game would not re-deal, so it would only mislead.
+ */
+export async function updateGameOptions(
+  pin: string,
+  patch: Partial<GameOptions>,
+): Promise<void> {
+  requireDb()
+  await updateDoc(gameRef(pin), patch)
+}
+
 /** What a PIN check found, so the caller knows whether to ask for a name. */
 export interface JoinCheck {
   /** True when this device is already a player — skip the identity step. */

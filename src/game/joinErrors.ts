@@ -10,6 +10,8 @@ export function joinErrorKey(err: unknown): string {
       return 'join.errors.started'
     case 'name-taken':
       return 'join.errors.nameTaken'
+    case 'empty-name':
+      return 'join.errors.emptyName'
     case 'not-configured':
       return 'join.errors.notConfigured'
     default:

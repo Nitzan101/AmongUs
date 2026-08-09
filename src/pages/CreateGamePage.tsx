@@ -1,80 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
-import { OptionCard } from '../components/ui/Card'
-import { IdentityFields } from '../components/IdentityFields'
 import { useAuth } from '../auth/AuthContext'
 import { createGame } from '../game/gameService'
 import { randomCharacter } from '../game/characters'
 import { useProfile } from '../game/profile'
-import {
-  DEFAULT_SET_ICON,
-  MIN_SET_ENTRIES,
-  useMyWordSets,
-} from '../game/wordSets'
-import type { GameMode, GuessRule, Scoring } from '../game/types'
-import type { Difficulty } from '../words'
+import { optionsFromProfile } from '../game/gameOptions'
 import type { Language } from '../i18n'
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="mt-6 flex flex-col gap-2">
-      <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
-        {title}
-      </h2>
-      {children}
-    </section>
-  )
-}
-
+/**
+ * Creating a room is one tap.
+ *
+ * Sharing the link is the urgent part — friends can't join until it exists —
+ * while the settings are patient, so they moved to the lobby where the host
+ * can adjust them during the dead time while people arrive. The host's last
+ * choices come from their profile, so a returning host usually changes
+ * nothing at all.
+ *
+ * This screen therefore has no form: it exists to gate on having an account,
+ * then to create and get out of the way.
+ */
 export function CreateGamePage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const isGuest = !user || user.isAnonymous
+  const { profile, loading: profileLoading } = useProfile(user?.uid, isGuest)
 
-  const [mode, setMode] = useState<GameMode>('half')
-  const [difficulty, setDifficulty] = useState<Difficulty>('medium')
-  const [scoring, setScoring] = useState<Scoring>('teamRace')
-  const [guess, setGuess] = useState<GuessRule>('final')
-  const [imposterAware, setImposterAware] = useState(true)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // The host picks their own name/character too, just like everyone else.
-  const [step, setStep] = useState<'options' | 'identity'>('options')
-  const [nickname, setNickname] = useState('')
-  const [character, setCharacter] = useState<string>(randomCharacter)
-  const { profile, loading: profileLoading } = useProfile(
-    user?.uid,
-    !user || user.isAnonymous,
-  )
-  const { sets } = useMyWordSets(user?.uid, !user || user.isAnonymous)
-  const usableSets = sets.filter(
-    (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
-  )
-  const [wordSetId, setWordSetId] = useState<string | null>(null)
-  // Which language the *words* come from — independent of the UI language,
-  // so an English-speaking host can deal Hebrew words to Hebrew friends.
-  const [wordLanguage, setWordLanguage] = useState<Language>(
-    (i18n.resolvedLanguage ?? 'en') as Language,
-  )
+  // Creating writes a room; a double-fire would leave an orphan behind.
+  const started = useRef(false)
 
   useEffect(() => {
-    if (profileLoading) return
-    if (profile?.nickname) setNickname(profile.nickname)
-    else if (user) setNickname(user.displayName || user.email?.split('@')[0] || '')
-    if (profile?.character) setCharacter(profile.character)
-  }, [profile, profileLoading, user])
+    if (authLoading || profileLoading || isGuest || started.current) return
+    started.current = true
+
+    const uiLanguage = (i18n.resolvedLanguage ?? 'en') as Language
+    const name =
+      profile?.nickname?.trim() ||
+      user!.displayName ||
+      user!.email?.split('@')[0] ||
+      t('auth.guest')
+
+    createGame(optionsFromProfile(profile?.gameOptions, uiLanguage), {
+      uid: user!.uid,
+      name,
+      character: profile?.character || randomCharacter(),
+    })
+      .then((pin) => navigate(`/lobby/${pin}`, { replace: true }))
+      .catch(() => {
+        // Let them try again rather than stranding them on a dead spinner.
+        started.current = false
+        setError(t('create.createError'))
+      })
+  }, [authLoading, profileLoading, isGuest, profile, user, i18n, navigate, t])
 
   // Hosting requires a real (non-guest) account.
-  if (!user || user.isAnonymous) {
+  if (!authLoading && isGuest) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <div className="text-6xl">🔑</div>
@@ -91,240 +74,26 @@ export function CreateGamePage() {
     )
   }
 
-  async function handleCreate() {
-    setError(null)
-    setBusy(true)
-    try {
-      const pin = await createGame(
-        {
-          language: wordLanguage,
-          mode,
-          difficulty,
-          scoring,
-          guess,
-          wordSetId,
-          imposterAware,
-        },
-        {
-          uid: user!.uid,
-          name: nickname.trim(),
-          character,
-        },
-      )
-      navigate(`/lobby/${pin}`)
-    } catch {
-      setError(t('create.createError'))
-      setBusy(false)
-    }
-  }
-
-  if (step === 'identity') {
+  if (error) {
     return (
-      <div className="flex flex-1 flex-col">
-        <h1 className="text-3xl font-black text-content">
-          {t('create.identityTitle')}
-        </h1>
-        <p className="mt-1 text-content-muted">{t('create.identitySubtitle')}</p>
-
-        <div className="mt-6">
-          <IdentityFields
-            nickname={nickname}
-            onNicknameChange={setNickname}
-            character={character}
-            onCharacterChange={setCharacter}
-          />
-        </div>
-
-        {error && (
-          <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
-            {error}
-          </p>
-        )}
-
-        <div className="mt-auto pt-8">
-          <Button
-            size="lg"
-            fullWidth
-            disabled={nickname.trim().length === 0 || busy}
-            onClick={handleCreate}
-          >
-            {busy ? t('create.creating') : t('create.submit')}
-          </Button>
-          <Button
-            variant="ghost"
-            fullWidth
-            className="mt-2"
-            onClick={() => setStep('options')}
-          >
-            {t('common.back')}
-          </Button>
-        </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="text-6xl">😕</div>
+        <p className="max-w-xs font-medium text-accent-600">{error}</p>
+        <Button size="lg" onClick={() => navigate(0)}>
+          {t('create.submit')}
+        </Button>
+        <Button variant="ghost" onClick={() => navigate('/')}>
+          {t('common.back')}
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col pb-4">
-      <h1 className="text-3xl font-black text-content">{t('create.title')}</h1>
-      <p className="mt-1 text-content-muted">{t('create.subtitle')}</p>
-
-      <Section title={t('create.mode')}>
-        <OptionCard
-          icon="🗣️"
-          title={t('create.modeHalf')}
-          description={t('create.modeHalfDesc')}
-          selected={mode === 'half'}
-          onSelect={() => setMode('half')}
-        />
-        <OptionCard
-          icon="💬"
-          title={t('create.modeFull')}
-          description={t('create.modeFullDesc')}
-          selected={mode === 'full'}
-          onSelect={() => setMode('full')}
-        />
-      </Section>
-
-      {usableSets.length > 0 && (
-        <Section title={t('create.words')}>
-          <OptionCard
-            icon="🎲"
-            title={t('create.wordsRandom')}
-            description={t('create.wordsRandomDesc')}
-            selected={wordSetId === null}
-            onSelect={() => setWordSetId(null)}
-          />
-          {usableSets.map((s) => (
-            <OptionCard
-              key={s.id}
-              icon={s.icon || DEFAULT_SET_ICON}
-              title={s.name}
-              description={t('sets.wordCount', { count: s.entries.length })}
-              selected={wordSetId === s.id}
-              onSelect={() => setWordSetId(s.id)}
-            />
-          ))}
-        </Section>
-      )}
-
-      {/* The built-in bank has a list per language; a custom set is free text. */}
-      {wordSetId === null && (
-        <Section title={t('create.wordLanguage')}>
-          {/* Letter marks rather than flag emoji: Windows doesn't render flags,
-              showing bare "GB"/"IL" letter pairs instead. */}
-          <OptionCard
-            icon="A"
-            title={t('common.english')}
-            selected={wordLanguage === 'en'}
-            onSelect={() => setWordLanguage('en')}
-          />
-          <OptionCard
-            icon="א"
-            title={t('common.hebrew')}
-            selected={wordLanguage === 'he'}
-            onSelect={() => setWordLanguage('he')}
-          />
-        </Section>
-      )}
-
-      {/* Difficulty tunes the built-in bank; a custom set carries its own pairs. */}
-      {wordSetId === null && (
-        <Section title={t('create.difficulty')}>
-          <OptionCard
-            icon="🙂"
-            title={t('create.difficultyEasy')}
-            description={t('create.difficultyEasyDesc')}
-            selected={difficulty === 'easy'}
-            onSelect={() => setDifficulty('easy')}
-          />
-          <OptionCard
-            icon="⚖️"
-            title={t('create.difficultyMedium')}
-            description={t('create.difficultyMediumDesc')}
-            selected={difficulty === 'medium'}
-            onSelect={() => setDifficulty('medium')}
-          />
-          <OptionCard
-            icon="🔥"
-            title={t('create.difficultyHard')}
-            description={t('create.difficultyHardDesc')}
-            selected={difficulty === 'hard'}
-            onSelect={() => setDifficulty('hard')}
-          />
-        </Section>
-      )}
-
-      {/* Applies whichever bank the words come from — it changes the card the
-          imposter sees, not how the pair is picked. */}
-      <Section title={t('create.awareness')}>
-        <OptionCard
-          icon="🕵️"
-          title={t('create.awarenessKnows')}
-          description={t('create.awarenessKnowsDesc')}
-          selected={imposterAware}
-          onSelect={() => setImposterAware(true)}
-        />
-        <OptionCard
-          icon="🎭"
-          title={t('create.awarenessHidden')}
-          description={t('create.awarenessHiddenDesc')}
-          selected={!imposterAware}
-          onSelect={() => setImposterAware(false)}
-        />
-      </Section>
-
-      <Section title={t('create.scoring')}>
-        <OptionCard
-          icon="🏁"
-          title={t('create.scoringTeamRace')}
-          description={t('create.scoringTeamRaceDesc')}
-          selected={scoring === 'teamRace'}
-          onSelect={() => setScoring('teamRace')}
-        />
-        <OptionCard
-          icon="🛟"
-          title={t('create.scoringSurvivors')}
-          description={t('create.scoringSurvivorsDesc')}
-          selected={scoring === 'survivors'}
-          onSelect={() => setScoring('survivors')}
-        />
-        <OptionCard
-          icon="🔎"
-          title={t('create.scoringDetective')}
-          description={t('create.scoringDetectiveDesc')}
-          selected={scoring === 'detective'}
-          onSelect={() => setScoring('detective')}
-        />
-      </Section>
-
-      <Section title={t('create.guess')}>
-        <OptionCard
-          icon="🎯"
-          title={t('create.guessFinal')}
-          description={t('create.guessFinalDesc')}
-          selected={guess === 'final'}
-          onSelect={() => setGuess('final')}
-        />
-        <OptionCard
-          icon="💰"
-          title={t('create.guessSteal')}
-          description={t('create.guessStealDesc')}
-          selected={guess === 'steal'}
-          onSelect={() => setGuess('steal')}
-        />
-        <OptionCard
-          icon="🚫"
-          title={t('create.guessOff')}
-          description={t('create.guessOffDesc')}
-          selected={guess === 'off'}
-          onSelect={() => setGuess('off')}
-        />
-      </Section>
-
-      <div className="mt-8">
-        <Button size="lg" fullWidth onClick={() => setStep('identity')}>
-          {t('common.next')}
-        </Button>
+    <div className="flex flex-1 flex-col items-center justify-center gap-3">
+      <div className="animate-pulse text-5xl">🕵️</div>
+      <div className="animate-pulse text-content-muted">
+        {t('create.creating')}
       </div>
     </div>
   )

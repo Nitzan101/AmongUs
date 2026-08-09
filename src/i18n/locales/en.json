@@ -4,6 +4,7 @@
     "back": "Back",
     "next": "Next",
     "cancel": "Cancel",
+    "save": "Save",
     "language": "Language",
     "english": "English",
     "hebrew": "עברית",
@@ -127,6 +128,7 @@
       "notFound": "No game found with that PIN.",
       "started": "That game has already started.",
       "nameTaken": "That nickname is taken — pick another.",
+      "emptyName": "Pick a nickname first.",
       "notConfigured": "Not connected yet. (Firebase setup in progress.)",
       "generic": "Could not join. Please try again."
     }
@@ -141,6 +143,12 @@
     "pinLabel": "Game PIN",
     "shareLink": "Share link",
     "copied": "Copied",
+    "settings": "Game settings",
+    "settingsHost": "Game settings — tap to change",
+    "settingsHint": "Set these while everyone joins. They lock once the game starts, and unlock again between games.",
+    "justChanged": "just changed",
+    "editIdentity": "Your name and character",
+    "editIdentityHint": "Tap to change",
     "players": "Players",
     "you": "you",
     "host": "HOST",

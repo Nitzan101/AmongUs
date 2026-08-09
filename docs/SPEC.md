@@ -43,7 +43,7 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
 - **Steal the Win:** correct guess cancels all crew points; imposter takes `+3` on top of survival points.
 - **Off:** no guess phase.
 
-## 3. Host options at game creation
+## 3. Host options (set in the lobby — see §19)
 
 - **Language:** English / Hebrew (full RTL support for Hebrew).
 - **Mode:**
@@ -324,6 +324,34 @@ changes. `GameOptions.imposterAware` gates a single condition in `WordCard`
   is the same class of tradeoff already documented at the top of `firestore.rules` — closing it
   properly needs server-side logic on a paid plan.
 
+## 19. Creating a room, and settings in the lobby
+
+Sharing the link is urgent — nobody can join until it exists — while the settings are patient.
+Treating them as one screen made the host answer six questions with friends waiting, so they were
+split by urgency.
+
+- **Creating is one tap.** `/create` has no form: it gates on having an account, then creates the
+  room and redirects to the lobby. Name comes from the saved profile, then the account's display
+  name or email prefix; character from the profile, else random. A `useRef` guard stops a
+  double-render creating two rooms.
+- **Settings moved into the lobby** (`GameSettingsPanel`), where the host adjusts them while
+  players trickle in. Safe because `startGame` re-reads the game document when it deals, so
+  whatever is set when Start is pressed is what plays.
+- **Editable only while `status === 'lobby'`.** A mid-game change wouldn't re-deal, so it would
+  only mislead. The room returns to a lobby between games, so a group can retune between rounds.
+- **Everyone sees the settings**, read-only for non-hosts: knowing it's Hard and Steal the Win is
+  part of deciding whether to play, and it costs nothing since every client already reads the game
+  document.
+- **Changes are highlighted for a few seconds** (`lobby.justChanged`), so someone who joined under
+  one set of rules notices them changing.
+- **The host's choices are saved to their profile** (`Profile.gameOptions`) and seed their next
+  room. `wordSetId` is deliberately excluded: a set can be deleted or emptied between sessions,
+  and silently defaulting to one that no longer deals is worse than starting from the bank.
+  Per-account, not per-group — someone who plays Hard with friends and Easy with family will get
+  the wrong default half the time, which is exactly why the lobby stays editable.
+- `OPTION_SPECS` in `src/game/gameOptions.ts` describes every option once, so the panel is a loop
+  rather than six near-identical blocks, and nothing can drift out of sync.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active
@@ -346,12 +374,14 @@ Everyone picks their own name and character — the host is no longer auto-named
   for **name + character**. A game that doesn't exist or has already started is reported at the PIN
   step, so nobody fills in a name for a game they can't enter. Share links land directly on
   `/join/:pin`, which re-checks the PIN before showing the form.
-- **Creating is two steps too:** game options → name/character → create. The host chooses like
-  everyone else.
+- **Creating is one tap** (see §19) — the host isn't asked at all, and instead edits their name
+  and character in the lobby by tapping their own row.
 - **Account defaults (optional):** account holders can save a default nickname and character
   (`users/{uid}`), set during sign-up and editable at `/profile`. These **pre-fill** the
   name/character screen and stay editable per game. Guests have no profile and pick per game.
-- `IdentityFields` is the shared component behind all three screens, so the choice looks and
+- **Renaming in the lobby** (`updatePlayerIdentity`) applies the same clash rule as joining —
+  two players sharing a name makes voting by name ambiguous.
+- `IdentityFields` is the shared component behind every one of these, so the choice looks and
   behaves identically everywhere.
 
 **Future:** let players upload their own image to use as a character, instead of only the built-in

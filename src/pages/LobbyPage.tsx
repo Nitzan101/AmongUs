@@ -12,7 +12,10 @@ import {
   startGame,
 } from '../game/gameService'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
+import { GameSettingsPanel } from '../components/GameSettingsPanel'
+import { EditIdentityDialog } from '../components/EditIdentityDialog'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
+import { MIN_SET_ENTRIES, useMyWordSets } from '../game/wordSets'
 
 const MIN_PLAYERS = 4
 
@@ -24,10 +27,21 @@ export function LobbyPage() {
   const { game, players, loading } = useGame(pin)
   const [copied, setCopied] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [editingIdentity, setEditingIdentity] = useState(false)
   const me = players.find((p) => p.id === user?.uid)
 
   usePresence(pin, user?.uid, game, players)
   const now = useNow()
+
+  // Only the host can switch word sets, so only their own sets are needed.
+  const isHostUser = game?.hostId === user?.uid
+  const { sets } = useMyWordSets(
+    isHostUser ? user?.uid : undefined,
+    !user || user.isAnonymous,
+  )
+  const usableSets = sets.filter(
+    (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
+  )
 
   // When the host starts the game, everyone in the lobby follows into it.
   useEffect(() => {
@@ -131,6 +145,14 @@ export function LobbyPage() {
         </Button>
       </div>
 
+      <GameSettingsPanel
+        pin={pin}
+        game={game}
+        isHost={isHost}
+        uid={user?.uid ?? ''}
+        usableSets={usableSets}
+      />
+
       <div className="mt-6 flex items-center justify-between px-1">
         <h2 className="text-sm font-bold uppercase tracking-wide text-content-muted">
           {t('lobby.players')}
@@ -146,15 +168,31 @@ export function LobbyPage() {
             key={p.id}
             className="flex items-center gap-3 rounded-2xl border border-line bg-surface-raised p-3"
           >
-            <span className="text-3xl">{p.character}</span>
-            <span className="flex-1 font-bold text-content">
-              {p.name}
-              {p.id === user?.uid && (
-                <span className="ms-1 text-sm font-normal text-content-muted">
-                  ({t('lobby.you')})
+            {/* Your own row is a button: the host was never asked for a name
+                or character, so this is where they set them. */}
+            {p.id === user?.uid ? (
+              <button
+                type="button"
+                onClick={() => setEditingIdentity(true)}
+                className="flex flex-1 items-center gap-3 text-start"
+              >
+                <span className="text-3xl">{p.character}</span>
+                <span className="flex-1 font-bold text-content">
+                  {p.name}
+                  <span className="ms-1 text-sm font-normal text-content-muted">
+                    ({t('lobby.you')})
+                  </span>
+                  <span className="block text-xs font-normal text-brand-600">
+                    {t('lobby.editIdentityHint')}
+                  </span>
                 </span>
-              )}
-            </span>
+              </button>
+            ) : (
+              <>
+                <span className="text-3xl">{p.character}</span>
+                <span className="flex-1 font-bold text-content">{p.name}</span>
+              </>
+            )}
             {isStale(p.lastSeen, now, STALE_AFTER_MS) && (
               <span className="rounded-full bg-content-muted/10 px-2 py-0.5 text-xs font-bold text-content-muted">
                 {t('lobby.disconnected')}
@@ -218,6 +256,14 @@ export function LobbyPage() {
           onCancel={() => setLeaving(false)}
           onLeave={handleLeave}
           onClose={handleCloseGame}
+        />
+      )}
+
+      {editingIdentity && me && (
+        <EditIdentityDialog
+          pin={pin}
+          me={me}
+          onClose={() => setEditingIdentity(false)}
         />
       )}
     </div>
