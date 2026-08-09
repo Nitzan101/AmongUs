@@ -12,7 +12,10 @@ export function HomePage() {
   const { user, signOut, loading } = useAuth()
   const [resuming, setResuming] = useState(hasRememberedGame)
 
-  const displayName = user?.displayName || user?.email?.split('@')[0] || ''
+  // A guest has neither a display name nor an email, so without a fallback the
+  // greeting rendered as "Hi, !" — comma, space, nothing.
+  const displayName =
+    user?.displayName || user?.email?.split('@')[0] || t('auth.guest')
 
   // If this device was mid-game (closed tab, phone locked, etc.), drop
   // straight back into it instead of showing the home screen. Guarded so a

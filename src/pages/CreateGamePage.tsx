@@ -43,6 +43,7 @@ export function CreateGamePage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [scoring, setScoring] = useState<Scoring>('teamRace')
   const [guess, setGuess] = useState<GuessRule>('final')
+  const [imposterAware, setImposterAware] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -102,6 +103,7 @@ export function CreateGamePage() {
           scoring,
           guess,
           wordSetId,
+          imposterAware,
         },
         {
           uid: user!.uid,
@@ -251,6 +253,25 @@ export function CreateGamePage() {
           />
         </Section>
       )}
+
+      {/* Applies whichever bank the words come from — it changes the card the
+          imposter sees, not how the pair is picked. */}
+      <Section title={t('create.awareness')}>
+        <OptionCard
+          icon="🕵️"
+          title={t('create.awarenessKnows')}
+          description={t('create.awarenessKnowsDesc')}
+          selected={imposterAware}
+          onSelect={() => setImposterAware(true)}
+        />
+        <OptionCard
+          icon="🎭"
+          title={t('create.awarenessHidden')}
+          description={t('create.awarenessHiddenDesc')}
+          selected={!imposterAware}
+          onSelect={() => setImposterAware(false)}
+        />
+      </Section>
 
       <Section title={t('create.scoring')}>
         <OptionCard

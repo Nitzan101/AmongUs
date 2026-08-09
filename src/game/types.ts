@@ -35,6 +35,19 @@ export interface GameOptions {
    * and `difficulty` applies; custom sets carry their own pairings instead.
    */
   wordSetId?: string | null
+  /**
+   * Whether the imposter is told they're the imposter.
+   *
+   * Default (`true`) is the classic game: the imposter knows, and plays a
+   * deliberate bluff. When `false` nobody is told anything — the imposter
+   * gives clues sincerely, unaware their word is the odd one out, and the
+   * fun is watching them work it out. The deal is identical either way; only
+   * the card changes.
+   *
+   * Optional because games created before this option existed have no such
+   * field; treat a missing value as `true`.
+   */
+  imposterAware?: boolean
 }
 
 /** The state of the current round within an active game. */

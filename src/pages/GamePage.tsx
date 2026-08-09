@@ -31,7 +31,14 @@ import type { Clue, Player, Round, Secret, Vote } from '../game/types'
 
 type PlayerMap = Map<string, Player>
 
-function WordCard({ secret }: { secret: Secret | null }) {
+function WordCard({
+  secret,
+  imposterAware,
+}: {
+  secret: Secret | null
+  /** False in the hidden-role variant: nobody is told what they are. */
+  imposterAware: boolean
+}) {
   const { t } = useTranslation()
   const [revealed, setRevealed] = useState(false)
 
@@ -43,7 +50,10 @@ function WordCard({ secret }: { secret: Secret | null }) {
     )
   }
 
-  const isImposter = secret.role === 'imposter'
+  // In the hidden-role variant the imposter is shown the ordinary crew card,
+  // so their word looks like everyone else's and they give clues sincerely.
+  // The deal itself is unchanged — they still hold the confusing word.
+  const isImposter = secret.role === 'imposter' && imposterAware
 
   if (!revealed) {
     return (
@@ -312,6 +322,7 @@ function CluePhase({
   staleIds,
   isFullVirtual,
   clues,
+  imposterAware,
 }: {
   pin: string
   round: Round
@@ -322,6 +333,7 @@ function CluePhase({
   staleIds: Set<string>
   isFullVirtual: boolean
   clues: Clue[]
+  imposterAware: boolean
 }) {
   const { t } = useTranslation()
   const iAmEliminated = !round.aliveIds.includes(uid)
@@ -349,7 +361,7 @@ function CluePhase({
             {t('game.youAreEliminated')}
           </div>
         ) : (
-          <WordCard secret={secret} />
+          <WordCard secret={secret} imposterAware={imposterAware} />
         )}
       </div>
 
@@ -1018,6 +1030,9 @@ export function GamePage() {
   const round = game?.round ?? null
   const me = players.find((p) => p.id === uid)
   const isFullVirtual = game?.mode === 'full'
+  // Games created before this option existed have no field; those played the
+  // classic way, so a missing value means "the imposter knows".
+  const imposterAware = game?.imposterAware !== false
   const clues = useClues(pin, isFullVirtual)
   const [leaving, setLeaving] = useState(false)
 
@@ -1114,6 +1129,7 @@ export function GamePage() {
           staleIds={staleIds}
           isFullVirtual={isFullVirtual}
           clues={clues}
+          imposterAware={imposterAware}
         />
       )
       break

@@ -55,7 +55,8 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
   from a different category).
 - **Scoring preset:** Team Race / Survivors / Detective.
 - **Guess rule:** Final Guess / Steal the Win / Off.
-- **Imposter awareness:** default the imposter knows he is the imposter; optional hidden-role variant.
+- **Imposter awareness:** default the imposter knows he is the imposter; optional hidden-role
+  variant where nobody is told (§18).
 - **Voice chat:** off by default; the host may enable a mutable microphone for the game (§10).
 
 ## 4. Accounts & joining
@@ -146,13 +147,10 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   give a stable cross-device identity and are the only way to accumulate long-term stats. Keep
   guest join; gently encourage sign-in for anyone who wants history/medals to persist. A signed-in
   user joining uses their account identity as their player — supported and encouraged.
-- **Greet a guest as "Guest":** the home screen renders `auth.greeting` with whatever name the
-  account has, but an anonymous guest has neither `displayName` nor `email`, so it falls back to
-  an empty string and shows "Hi, !" (Hebrew: "היי, !") — a stray comma and a missing word. Show
-  "Hi, Guest!" instead. Needs a new `auth.guest` key in **both** locale files (neither has one
-  today) used as the fallback in `HomePage`. Note the guest's *game* nickname is deliberately not
-  reused here: it is chosen per game and isn't account state, so the home screen has nothing to
-  show before they join one.
+- ✅ **Greet a guest as "Guest" — BUILT.** `HomePage` falls back to a new `auth.guest` key
+  ("Guest" / "אורח") when there's no display name or email, instead of rendering "Hi, !". The
+  guest's *game* nickname is deliberately not reused: it's chosen per game rather than stored on
+  the account, so there's nothing to show before they join one.
 - **Share/publish a game or word set:** shareable link to copy a themed set into your own account
   and host with it — ties into custom word sets (Milestone 7).
 - ✅ **Emoji for a word set — BUILT.** The creator picks from a 16-emoji spread when editing a
@@ -161,12 +159,7 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   (Firestore rejects that), and cleared with `deleteField()` so removing one actually removes it.
   *Still open:* an **uploaded image** instead of an emoji, which would share the plumbing with the
   custom-character upload below.
-- **Imposter-awareness option — AGREED BUT NOT BUILT.** In stage 3 the choice was "host option":
-  default that the imposter knows they're the imposter, with an optional hidden-role variant where
-  nobody is told. Recorded in §3 as a host option, but never implemented — the create screen has no
-  such setting and every game deals a known imposter. Needs: a `GameOptions` flag, a create-screen
-  option, and a `WordCard` variant that hides the "You're the imposter!" banner while still dealing
-  the confusing word.
+- ✅ **Imposter-awareness option — BUILT.** See §18.
 - **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
   "100 is few" feedback, so both banks are worth another authoring pass.
 - **Turn circle in half-virtual mode (host option, default off):** in-person games currently show
@@ -300,6 +293,36 @@ domains.
   deal Hebrew words to Hebrew-speaking friends. This is the refinement flagged under the
   language-vs-words decision. Shown only for the built-in bank; custom sets are free text and carry
   their own language.
+
+## 18. Imposter awareness (hidden-role variant)
+
+A host option, chosen at game creation alongside difficulty and scoring.
+
+- **They know** (default) — the classic game. The imposter's card announces "You're the
+  imposter!" and they set about bluffing.
+- **Hidden role** — nobody is told anything. The imposter is shown the ordinary crew card and
+  gives clues sincerely, with no idea their word is the odd one out. They're caught because their
+  honest clues don't fit, and the payoff is the moment they realise it was them.
+
+**The deal is identical in both.** One player still receives the confusing word; only the card
+changes. `GameOptions.imposterAware` gates a single condition in `WordCard`
+(`secret.role === 'imposter' && imposterAware`), so the crew layout renders for everyone.
+
+- The field is **optional, and a missing value means `true`** — games created before this option
+  existed were played the classic way, and `game.imposterAware !== false` keeps them that way.
+- The setting **persists for the whole room**, like `mode` and `scoring`: only `createGame` writes
+  the game document wholesale, and every later write is field-scoped, so "next game" keeps it.
+- **The guess phase still works.** By the time it runs the imposter has been caught and revealed,
+  so they know what they are; a hidden-role game ends with the same desperate guess at the main
+  word. Deliberately not forced to Off — the "oh no, it was *me*" reveal followed by a guess is
+  the best moment the variant produces.
+- The crew hint ("Give a clue the others will get — but the imposter won't") reads correctly to a
+  hidden imposter, who believes they're crew. No separate copy needed.
+- **Known limit, consistent with the rest of the rules:** `Secret.role` is still stored in the
+  player's own document, because the host reads secrets to resolve eliminations and scoring. A
+  player who opened developer tools could therefore read their own role even in hidden mode. This
+  is the same class of tradeoff already documented at the top of `firestore.rules` — closing it
+  properly needs server-side logic on a paid plan.
 
 ## 14. Leaving a game
 
