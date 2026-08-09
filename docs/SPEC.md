@@ -146,8 +146,13 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   give a stable cross-device identity and are the only way to accumulate long-term stats. Keep
   guest join; gently encourage sign-in for anyone who wants history/medals to persist. A signed-in
   user joining uses their account identity as their player — supported and encouraged.
-- **Stats & badges:** avg placement, "won 5 games", "led 3 games", "1-year account", etc. Needs a
-  per-account stats store updated at game end; account users only.
+- **Greet a guest as "Guest":** the home screen renders `auth.greeting` with whatever name the
+  account has, but an anonymous guest has neither `displayName` nor `email`, so it falls back to
+  an empty string and shows "Hi, !" (Hebrew: "היי, !") — a stray comma and a missing word. Show
+  "Hi, Guest!" instead. Needs a new `auth.guest` key in **both** locale files (neither has one
+  today) used as the fallback in `HomePage`. Note the guest's *game* nickname is deliberately not
+  reused here: it is chosen per game and isn't account state, so the home screen has nothing to
+  show before they join one.
 - **Share/publish a game or word set:** shareable link to copy a themed set into your own account
   and host with it — ties into custom word sets (Milestone 7).
 - ✅ **Emoji for a word set — BUILT.** The creator picks from a 16-emoji spread when editing a
