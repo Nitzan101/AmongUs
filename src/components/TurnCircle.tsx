@@ -37,7 +37,12 @@ export function TurnCircle({
   const n = order.length
   const isLive = variant === 'live'
   // In person the app can't know who is speaking, so it marks who starts.
-  const highlightId = isLive ? currentTurnId : order[0]?.id
+  // Skipping the eliminated matters from the second round on: whoever holds
+  // the first seat may have been voted out, and announcing a dead player as
+  // the one who begins would send the table to the wrong person.
+  const highlightId = isLive
+    ? currentTurnId
+    : order.find((p) => !eliminatedIds.has(p.id))?.id
   const current = order.find((p) => p.id === highlightId)
 
   return (

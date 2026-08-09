@@ -472,6 +472,15 @@ Hidden from the settings panel in online mode, where the ring is always used and
 to choose. Eliminated and disconnected styling still applies in both, since those come from game
 state rather than clues.
 
+**Who starts skips the eliminated.** `turnOrder` keeps eliminated players in their seats, so from
+the second round on the first seat may be someone who is out. The `order` variant picks the first
+player still alive, the way the online variant already did through `aliveOrder`. Naming a dead
+player as the one who begins would send the table to the wrong person.
+
+**The starter changes per game, not per round** (§1): the order rotates one seat each new game, so
+within a game the same person opens every round — barring elimination, which is exactly the case
+above.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active
