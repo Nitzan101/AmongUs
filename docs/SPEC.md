@@ -395,6 +395,29 @@ a phone.
 first visit, where the absence of a controller means an initial install rather than an update, and
 guards the reload so a worker that keeps claiming cannot loop.
 
+## 23. Seating across games in a room
+
+A room hosts many games and `seatOrder` persists between them, so the one-seat-per-game rotation
+means something. But nothing kept it in step with who was actually present: `removeFromRound`
+only edits `round.*`, and `startGame` passed the stored `seatOrder` straight through.
+
+From the **second game onward** that was wrong in both directions:
+
+- Someone who **joined between games** was dealt a secret (the deal loops over the real player
+  list) but was absent from `turnOrder` and `aliveIds`, which came from the stale seating. They
+  held a word, never got a turn, and could not be voted for.
+- Someone who **left** kept their seat, so the game waited on a phantom the others could vote for.
+
+`reconcileSeatOrder` now rebuilds the seating at deal time: players still present keep their
+relative order (the point of stable seating), leavers drop out, and newcomers take the last seats.
+The result is always exactly the current player list, so seats, secrets, turn order and `aliveIds`
+can no longer disagree. `finalizeGame` scores off `seatOrder` too, so it was mis-scoring the same
+way.
+
+Checked against a real two-game room: after a newcomer joined and a player left between games, the
+newcomer was seated, had a turn and was alive, the leaver was gone, and the rotation still advanced
+by one.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active
