@@ -23,7 +23,9 @@ import {
   startGame,
   submitClue,
 } from '../game/gameService'
+import { GameClosedScreen } from '../components/GameClosedScreen'
 import { HostPlayerManager } from '../components/HostPlayerManager'
+import { useGameClosed } from '../game/useGameClosed'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { TurnCircle } from '../components/TurnCircle'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
@@ -1052,25 +1054,34 @@ export function GamePage() {
     players.filter((p) => isStale(p.lastSeen, now, STALE_AFTER_MS)).map((p) => p.id),
   )
 
-  // Follow the game back to the lobby when it ends there — or home if the host
-  // closed the room entirely.
+  const closed = useGameClosed(loading, game)
+
+  // Follow the game back to the lobby when it ends there — or, if the host
+  // closed the room, stop and say so rather than vanishing mid-round.
   useEffect(() => {
     if (loading) return
     if (!game) {
       forgetGame()
-      navigate('/', { replace: true })
+      if (!closed) navigate('/', { replace: true })
     } else if (game.status === 'lobby') {
       navigate(`/lobby/${pin}`, { replace: true })
     }
-  }, [loading, game, pin, navigate])
+  }, [loading, game, pin, navigate, closed])
 
-  // Kicked mid-game (or the room vanished under us) → forget it and bounce out.
+  // Kicked mid-game → forget it and bounce out to the lobby.
+  //
+  // `players.length > 0` is what separates a kick from the room being torn
+  // down: `closeGame` deletes the players before the game document, so for a
+  // moment everyone looks kicked. Without this, closing a room mid-round
+  // bounced players to a lobby that had never seen the game, which then sent
+  // them home with no explanation — the very thing the closed notice exists to
+  // prevent. A real kick always leaves the other players behind.
   useEffect(() => {
-    if (!loading && game && user && !me) {
+    if (!loading && game && user && !me && players.length > 0) {
       forgetGame()
       navigate(`/lobby/${pin}`, { replace: true })
     }
-  }, [loading, game, user, me, pin, navigate])
+  }, [loading, game, user, me, players.length, pin, navigate])
 
   // The host drives the reveal once everyone has voted.
   useEffect(() => {
@@ -1104,6 +1115,10 @@ export function GamePage() {
     round?.guessNeedsReview,
     pin,
   ])
+
+  // Checked before the loading state: once the room is gone there is nothing
+  // left to wait for, and a spinner would be the wrong thing to show.
+  if (closed) return <GameClosedScreen />
 
   if (loading || !game || !round) {
     return (

@@ -407,6 +407,21 @@ guards the reload so a worker that keeps claiming cannot loop.
   - **Close the game for everyone** — `closeGame` deletes the room and every subcollection
     (players, secrets, votes, clues) and clears the remembered PIN, so all players' apps drop back
     to the home screen instead of auto-resuming into a dead game.
+- **Everyone else is told, not just ejected.** The other players hold on a "The host closed the
+  game" screen and return home when they acknowledge it, rather than being thrown to the home
+  screen mid-conversation with no explanation (`useGameClosed`, `GameClosedScreen`). Two things
+  this had to get right:
+  - **Derived during render, not from an effect.** The first attempt set a flag in an effect and
+    lost a race: the page's own "game is gone, go home" effect ran in the same commit, still saw
+    the old value, and navigated away before the notice could appear.
+  - **A kick and a teardown look identical for a moment.** `closeGame` deletes the players
+    *before* the game document, so every player briefly looks kicked. The game screen's kick
+    redirect therefore also requires `players.length > 0` — a real kick always leaves the others
+    behind, a teardown empties everyone. Without it, closing a room mid-round bounced players to
+    a lobby that had never seen the game, which sent them home silently: exactly the behaviour
+    the notice exists to replace.
+  - Someone arriving at a PIN that never existed still goes straight home; the notice needs us to
+    have actually been in the game.
 - If the last player leaves, the room closes automatically.
 
 ## 13. Player identity & profiles

@@ -151,7 +151,10 @@
     "startGame": "Start game",
     "hostNote": "The host starts the game once everyone is in.",
     "leave": "Leave game",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "closedTitle": "The host closed the game",
+    "closedBody": "This room has been closed for everyone. Your scores for this session are gone, but you can start or join a new game any time.",
+    "closedAction": "Back to home"
   },
   "game": {
     "dealing": "Dealing the words…",

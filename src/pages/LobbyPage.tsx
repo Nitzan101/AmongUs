@@ -14,6 +14,8 @@ import {
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { GameSettingsPanel } from '../components/GameSettingsPanel'
 import { EditIdentityDialog } from '../components/EditIdentityDialog'
+import { GameClosedScreen } from '../components/GameClosedScreen'
+import { useGameClosed } from '../game/useGameClosed'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
 import { MIN_SET_ENTRIES, useMyWordSets } from '../game/wordSets'
 
@@ -50,16 +52,20 @@ export function LobbyPage() {
     }
   }, [game?.status, pin, navigate])
 
+  const closed = useGameClosed(loading, game)
+
   // If we're no longer a player here (kicked, or the host closed the room), forget it.
   useEffect(() => {
     if (loading) return
     if (!game) {
       forgetGame()
-      navigate('/', { replace: true })
+      // Someone whose room was closed gets told why and leaves on their own
+      // terms; only a PIN that never existed goes straight home.
+      if (!closed) navigate('/', { replace: true })
     } else if (!me) {
       forgetGame()
     }
-  }, [loading, game, me, navigate])
+  }, [loading, game, me, navigate, closed])
 
   if (loading) {
     return (
@@ -68,6 +74,8 @@ export function LobbyPage() {
       </div>
     )
   }
+
+  if (closed) return <GameClosedScreen />
 
   if (!game) {
     return (
