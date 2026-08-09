@@ -5,6 +5,7 @@ import { isRtl } from '../i18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { LeaveGuardProvider } from './LeaveGuard'
 import { useLeaveGuard } from '../game/leaveGuardContext'
+import { parentRoute } from '../game/parentRoute'
 
 export function Layout() {
   return (
@@ -21,9 +22,13 @@ function LayoutShell() {
   const ctx = useLeaveGuard()
   const language = i18n.resolvedLanguage ?? 'en'
 
+  const parent = parentRoute(location.pathname)
+
   // A page holding unsaved edits can intercept this and confirm first.
+  // `replace` so going up a level doesn't pile another entry onto the stack.
   function goBack() {
-    const proceed = () => navigate(-1)
+    if (!parent) return
+    const proceed = () => navigate(parent, { replace: true })
     if (ctx?.guard.current?.(proceed)) return
     proceed()
   }
@@ -40,7 +45,9 @@ function LayoutShell() {
     <div className="flex min-h-full justify-center bg-surface">
       <div className="flex min-h-full w-full max-w-md flex-col px-5 pb-8">
         <header className="flex items-center justify-between py-4">
-          {isHome ? (
+          {/* No parent means no Back: the lobby and an active game are left
+              through "Leave game", which also decides the room's fate. */}
+          {isHome || !parent ? (
             <span className="text-lg font-black text-brand-600">
               🕵️ {t('common.appName')}
             </span>

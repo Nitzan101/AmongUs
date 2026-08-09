@@ -9,9 +9,9 @@ import { useLeaveGuard } from './leaveGuardContext'
  *
  * 1. **The header's Back button** — registered with `LeaveGuardProvider`, which
  *    Layout consults before navigating. `useBlocker` was the first attempt and
- *    did not intercept the `navigate(-1)` that button performs, so it is
- *    guarded directly instead of trusting a mechanism that misses the case
- *    people actually hit.
+ *    did not intercept the `navigate(-1)` that button performed then, so it is
+ *    guarded directly. Back now goes to an explicit parent route instead, but
+ *    the direct guard is the one proven to work, so it stays.
  * 2. **Any other in-app navigation** — `useBlocker` still covers pushes.
  * 3. **Closing or reloading the tab** — `beforeunload`, where the browser
  *    supplies its own wording.

@@ -18,9 +18,11 @@ export interface LeaveGuardStore {
  * navigating. A ref rather than state: registering must not re-render Layout,
  * and the value only ever needs to be read at click time.
  *
- * `useBlocker` was tried first and does catch pushes, but it did not intercept
- * the `navigate(-1)` this button performs, so the button is guarded directly
- * rather than trusting a mechanism that quietly misses the main case.
+ * `useBlocker` was tried first and did not intercept the `navigate(-1)` the
+ * button performed at the time, so it was guarded directly instead. Back has
+ * since moved to an explicit parent route (see `parentRoute`), which
+ * `useBlocker` would catch — but this guard stays, because it is the one that
+ * has been shown to work and it costs nothing to keep.
  *
  * Kept apart from the provider component so the module exports only values,
  * which is what fast refresh needs.

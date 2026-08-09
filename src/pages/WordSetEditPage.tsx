@@ -124,7 +124,9 @@ export function WordSetEditPage() {
       else await updateWordSet(id!, name, rows, icon)
       // Leaving *because* we saved isn't something to warn about.
       allowNext()
-      navigate('/sets')
+      // `replace` so the editor doesn't stay on the stack — otherwise each
+      // edit-and-save left two entries behind to click through later.
+      navigate('/sets', { replace: true })
     } catch {
       setError(t('sets.saveError'))
       setBusy(false)

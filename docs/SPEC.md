@@ -362,6 +362,39 @@ Leaving the word-set editor used to discard a half-written set in silence.
 - Applied to the **word-set editor** and the **profile screen**. Not the create-game flow, which
   no longer has a form (§19), nor the lobby settings panel, which saves on every tap.
 
+## 21. Navigation: what "Back" means
+
+Back used to call `navigate(-1)`, which is *browser history*, not app structure. Two failures came
+out of one playtest:
+
+- **It could leave the app.** Opening a share link, or reopening straight into a game, leaves the
+  previous history entry pointing at some other website — so Back behaved like the browser's undo
+  rather than going up a level.
+- **It accumulated.** Saving a word set pushed a new entry, so after editing n sets it took 2n
+  taps to get home.
+
+`parentRoute()` now declares a parent per screen and Back navigates there with `replace`, so the
+stack never grows and Back means one thing however you arrived.
+
+- **The lobby and an active game have no parent, so the button is hidden.** They are left through
+  **Leave game**, which also decides what happens to the room. Sending them "home" would be a lie
+  anyway: the home screen auto-resumes straight back into the active game.
+- `/join/:pin` goes up to `/join`, and `/sets/:id` (including `new`) to `/sets`.
+- Saving a set also navigates with `replace`, so the editor doesn't stay on the stack.
+
+## 22. Picking up a deploy
+
+The service worker is built with `skipWaiting` and `clientsClaim`, so a new version activates and
+claims the page at once — but the page has **already rendered from the old cache** by then, and
+nothing told it to re-render. A deploy therefore stayed invisible for a whole session: you'd open
+the app, see the previous version, and only get the new one after closing and reopening. That is
+how a lobby settings panel that was demonstrably in the deployed bundle appeared to be missing on
+a phone.
+
+`reloadOnServiceWorkerUpdate()` listens for `controllerchange` and reloads once. It skips the very
+first visit, where the absence of a controller means an initial install rather than an update, and
+guards the reload so a worker that keeps claiming cannot loop.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active
