@@ -142,10 +142,12 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
 
 ## 10. Future features backlog
 
-- **Account vs guest (design):** guests (anonymous) are zero-friction but device-bound; accounts
-  give a stable cross-device identity and are the only way to accumulate long-term stats. Keep
-  guest join; gently encourage sign-in for anyone who wants history/medals to persist. A signed-in
-  user joining uses their account identity as their player — supported and encouraged.
+- ✅ **Account vs guest (design) — SETTLED.** Guests (anonymous) are zero-friction but
+  device-bound; accounts give a stable identity and are the only thing stats accumulate against.
+  Guest join stays untouched. The encouragement now has something concrete to offer, so it sits on
+  the **final scoreboard** — the one moment a guest can see what an account would have kept — as a
+  quiet line under the scores rather than a popup: an offer, not a toll. Nothing gates on it, and
+  it appears nowhere else in the flow.
 - ✅ **Greet a guest as "Guest" — BUILT.** `HomePage` falls back to a new `auth.guest` key
   ("Guest" / "אורח") when there's no display name or email, instead of rendering "Hi, !". The
   guest's *game* nickname is deliberately not reused: it's chosen per game rather than stored on

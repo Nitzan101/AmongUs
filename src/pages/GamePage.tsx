@@ -1021,17 +1021,37 @@ function ResultPhase({
   pin,
   players,
   isHost,
+  isGuest,
 }: {
   pin: string
   players: Player[]
   isHost: boolean
+  isGuest: boolean
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   return (
     <div className="flex flex-1 flex-col pb-4">
       <div className="flex-1">
         <Scoreboard players={players} />
+
+        {/* The one moment a guest can see what an account would have kept:
+            they've just finished a game that counted for nobody. A quiet line
+            under the scores, not a popup — joining is meant to stay
+            frictionless, and this is an offer rather than a toll. */}
+        {isGuest && (
+          <div className="mt-4 rounded-2xl border border-line bg-surface-raised p-4 text-center">
+            <p className="text-sm text-content-muted">{t('game.guestNudge')}</p>
+            <Button
+              variant="ghost"
+              className="mt-1 text-brand-600"
+              onClick={() => navigate('/signin')}
+            >
+              {t('home.signIn')} →
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="mt-auto pt-6">
@@ -1267,7 +1287,14 @@ export function GamePage() {
       )
       break
     case 'result':
-      phaseView = <ResultPhase pin={pin} players={players} isHost={isHost} />
+      phaseView = (
+        <ResultPhase
+          pin={pin}
+          players={players}
+          isHost={isHost}
+          isGuest={isGuest}
+        />
+      )
       break
   }
 
