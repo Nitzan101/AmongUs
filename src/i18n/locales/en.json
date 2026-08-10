@@ -363,5 +363,25 @@
     "body": "Your changes haven't been saved. Leaving now discards them.",
     "stay": "Keep editing",
     "discard": "Discard changes"
+  },
+  "stats": {
+    "title": "Your record",
+    "empty": "No finished games yet. Play one and it shows up here.",
+    "played": "Games played",
+    "won": "Wins",
+    "avgPoints": "Avg points",
+    "asImposter": "Times imposter",
+    "imposterWins": "Imposter wins",
+    "hosted": "Games hosted",
+    "badges": "Badges",
+    "badgeNames": {
+      "firstGame": "Played your first game",
+      "played10": "Played 10 games",
+      "won5": "Won 5 games",
+      "hosted3": "Hosted 3 games",
+      "imposter5": "Been the imposter 5 times",
+      "imposterWins3": "Won 3 games as the imposter",
+      "oneYear": "Playing for a year"
+    }
   }
 }

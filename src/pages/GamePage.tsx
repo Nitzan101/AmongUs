@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
@@ -26,6 +26,7 @@ import {
 import { GameClosedScreen } from '../components/GameClosedScreen'
 import { HostPlayerManager } from '../components/HostPlayerManager'
 import { useGameClosed } from '../game/useGameClosed'
+import { recordGameResult } from '../game/stats'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { TurnCircle } from '../components/TurnCircle'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
@@ -1062,7 +1063,7 @@ export function GamePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pin = '' } = useParams()
-  const { user } = useAuth()
+  const { user, isGuest } = useAuth()
   const { game, players, loading } = useGame(pin)
   const secret = useSecret(pin, user?.uid)
   const votes = useVotes(pin)
@@ -1124,6 +1125,39 @@ export function GamePage() {
       navigate(`/lobby/${pin}`, { replace: true })
     }
   }, [loading, game, user, me, players.length, pin, navigate])
+
+  // Add this game to your own totals, once it has ended.
+  //
+  // Every device records its own: the rules only let a user write their own
+  // `users/{uid}`, so the host can't do it for the table. Guests are skipped —
+  // their identity is per-device and won't be there tomorrow — as is anyone
+  // who joined mid-game and only watched, who is absent from `turnOrder`.
+  const recordedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (isGuest || !user || !game || !round) return
+    if (round.phase !== 'recap' && round.phase !== 'result') return
+    if (!round.turnOrder.includes(user.uid)) return
+
+    const key = `${pin}:${game.gameNumber ?? 1}`
+    // Cheap in-memory guard against re-renders; `recordGameResult` also checks
+    // Firestore, which covers a reload.
+    if (recordedRef.current === key) return
+    recordedRef.current = key
+
+    const wasImposter = round.imposterId === user.uid
+    recordGameResult(user.uid, {
+      pin,
+      gameNumber: game.gameNumber ?? 1,
+      wasImposter,
+      wasHost: game.hostId === user.uid,
+      won:
+        round.outcome === (wasImposter ? 'imposter-wins' : 'crew-wins'),
+      points: round.scoreBreakdown?.[user.uid]?.delta ?? 0,
+    }).catch(() => {
+      // Stats are a keepsake, never a reason to interrupt the game.
+      recordedRef.current = null
+    })
+  }, [isGuest, user, game, round, pin])
 
   // The host drives the reveal once everyone has voted.
   useEffect(() => {

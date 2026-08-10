@@ -150,10 +150,10 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   ("Guest" / "אורח") when there's no display name or email, instead of rendering "Hi, !". The
   guest's *game* nickname is deliberately not reused: it's chosen per game rather than stored on
   the account, so there's nothing to show before they join one.
-- **Stats & badges:** avg placement, "won 5 games", "led 3 games", "1-year account", etc. Needs a
-  per-account stats store updated at game end; account users only. Worth logging the chosen game
-  options at the same time — nothing currently measures which of the six host options anyone ever
-  changes, so trimming them would be guesswork.
+- ✅ **Stats & badges — BUILT.** See §28. *Still open:* logging which game options get chosen.
+  Nothing measures which of the host options anyone ever changes, so trimming the list would be
+  guesswork — but per-account counters can't answer it either. That needs aggregation across
+  accounts, which means server-side work nobody can read from a profile screen.
 - ✅ **Share a word set — BUILT.** See §27. (Sharing a *game* was never a separate thing: the
   lobby's share link already does that.)
 - ✅ **Emoji for a word set — BUILT.** The creator picks from a 16-emoji spread when editing a
@@ -507,6 +507,32 @@ Verified across two real accounts: the recipient read a set they didn't own and 
 document owned by themselves, with name, icon and entries preserved — including an optional
 `confusing` field present on one entry and absent on others. Deleting the original as a non-owner
 was correctly refused.
+
+## 28. Stats & badges
+
+An account's running record, shown on `/profile`: games played, wins, average points, times
+imposter, imposter wins, games hosted — plus seven badges.
+
+- **Each player records their own.** The rules only let a user write their own `users/{uid}`, so
+  the host — who resolves everything else about an ending — cannot do this for the table. Every
+  device writes its own line when it sees the game reach `recap`.
+- **Counting once is the whole problem.** Reloading, re-rendering, or coming back to a finished
+  recap must not inflate anyone's record, so `stats.lastGame` holds `pin:gameNumber` (unique per
+  game within a room) and a repeat write is refused. A `useRef` in the page catches re-renders
+  before they reach Firestore at all.
+- **Skipped for guests**, whose identity is per-device and won't exist tomorrow, and for anyone
+  who **joined mid-game and only watched** — absent from `turnOrder`, so it was never their game.
+- **Badges are derived, never stored** (`badgesFor`), so thresholds can change without migrating
+  anyone's data and nobody keeps a badge the numbers no longer support. Unearned ones show greyed
+  with progress rather than hidden: a locked "3/5 wins" is something to play towards.
+- **Stats never interrupt the game.** A failed write is swallowed and retried next time; they're
+  a keepsake, not part of play.
+- No rules change: writing your own profile document was already allowed.
+
+Verified against real Firestore: a first game set every counter and `firstPlayedAt`; replaying the
+identical `pin:gameNumber` returned false and changed nothing; a genuinely different game
+incremented correctly. Badge thresholds checked at zero, at target, past target (progress caps at
+the target rather than overshooting), and the one-year badge at 400 days versus 10.
 
 ## 14. Leaving a game
 

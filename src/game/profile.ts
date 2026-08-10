@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import type { Stats } from './stats'
 import type { GameOptions } from './types'
 
 /**
@@ -20,6 +21,12 @@ export interface Profile {
    * time, which is why these stay editable in the lobby.
    */
   gameOptions?: SavedGameOptions
+  /**
+   * Running totals across every game this account has played. Written by the
+   * account's own device at game end — see `stats.ts` for why it can't be the
+   * host that does it.
+   */
+  stats?: Stats
 }
 
 /**

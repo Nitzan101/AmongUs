@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { IdentityFields } from '../components/IdentityFields'
 import { ProfileIcon } from '../components/NavIcons'
+import { StatsPanel } from '../components/StatsPanel'
 import { UnsavedChangesDialog } from '../components/UnsavedChangesDialog'
 import { useUnsavedChanges } from '../game/useUnsavedChanges'
 import { useAuth } from '../auth/AuthContext'
@@ -93,7 +94,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col pb-4">
       <h1 className="flex items-center gap-2 text-3xl font-black text-content">
         <ProfileIcon size={26} />
         {t('profile.title')}
@@ -111,11 +112,13 @@ export function ProfilePage() {
         />
       </div>
 
-      <div className="mt-auto pt-8">
+      <div className="mt-6">
         <Button size="lg" fullWidth disabled={busy} onClick={handleSave}>
           {saved ? `✓ ${t('profile.saved')}` : t('profile.save')}
         </Button>
       </div>
+
+      <StatsPanel stats={profile?.stats} />
 
       {blocked && <UnsavedChangesDialog onStay={stay} onDiscard={discard} />}
     </div>
