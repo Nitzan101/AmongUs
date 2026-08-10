@@ -154,8 +154,8 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   per-account stats store updated at game end; account users only. Worth logging the chosen game
   options at the same time — nothing currently measures which of the six host options anyone ever
   changes, so trimming them would be guesswork.
-- **Share/publish a game or word set:** shareable link to copy a themed set into your own account
-  and host with it — ties into custom word sets (Milestone 7).
+- ✅ **Share a word set — BUILT.** See §27. (Sharing a *game* was never a separate thing: the
+  lobby's share link already does that.)
 - ✅ **Emoji for a word set — BUILT.** The creator picks from a 16-emoji spread when editing a
   set; it shows in the sets list and the game-creation picker, defaulting to ✏️ for sets saved
   before icons existed. Stored as `WordSet.icon`, omitted rather than written as `undefined`
@@ -223,8 +223,7 @@ Account holders can play with their own themed words instead of the built-in ban
 - **Resilience:** if the chosen set is deleted or emptied before a game starts, `startGame` falls
   back to the built-in bank rather than failing to deal.
 
-**Future:** share/publish a set so a friend can copy it into their own account and host with it
-(already noted in the future-features backlog).
+**Sharing a set:** see §27.
 
 ## 17. Polish & deploy (Milestone 8)
 
@@ -483,6 +482,31 @@ player as the one who begins would send the table to the wrong person.
 **The starter changes per game, not per round** (§1): the order rotates one seat each new game, so
 within a game the same person opens every round — barring elimination, which is exactly the case
 above.
+
+## 27. Sharing a word set
+
+A 🔗 on each row of `/sets` copies a link to the clipboard; opening it lands on
+`/sets/import/:id`, which offers to save a copy into your own account.
+
+- **A copy, not a shared reference.** The recipient can rename it, add words, or delete it with
+  none of that reaching back to the original — and a set can't vanish mid-game because whoever
+  wrote it deleted theirs. Sharing a set is passing on a recipe, not lending a book.
+- **The import page never shows the words.** A share link can reach anyone, including someone
+  sitting in a game being dealt from that very set, and any signed-in user may read a set — so
+  printing the list would hand them the answers. Name, icon and word count are enough to decide.
+  Once copied it's theirs to open.
+- **No rules change was needed.** `wordSets` already allowed read by any signed-in user and create
+  with `ownerId == request.auth.uid`, with a comment anticipating exactly this.
+- Guests get the account gate: a set has nowhere to live without an account. Someone opening
+  their *own* share link is told so, and can still make a second copy.
+- The route is declared **before** `/sets/:id`, or a share link would be read as a set id to edit.
+- The clipboard can be unavailable (insecure origin, or a browser wanting a gesture it didn't
+  see), so that falls back to a prompt showing the link.
+
+Verified across two real accounts: the recipient read a set they didn't own and got a separate
+document owned by themselves, with name, icon and entries preserved — including an optional
+`confusing` field present on one entry and absent on others. Deleting the original as a non-owner
+was correctly refused.
 
 ## 14. Leaving a game
 

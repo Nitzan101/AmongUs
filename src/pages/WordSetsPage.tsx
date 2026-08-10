@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
@@ -15,6 +16,7 @@ export function WordSetsPage() {
   const navigate = useNavigate()
   const { user, isGuest, loading: authLoading } = useAuth()
   const { sets, loading, reload } = useMyWordSets(user?.uid, isGuest)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   if (authLoading || loading) {
     return (
@@ -45,6 +47,19 @@ export function WordSetsPage() {
     if (!window.confirm(t('sets.confirmDelete', { name }))) return
     await deleteWordSet(id)
     reload()
+  }
+
+  async function handleShare(id: string) {
+    const link = `${window.location.origin}/sets/import/${id}`
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 1500)
+    } catch {
+      // Clipboard can be unavailable (insecure origin, or a browser that wants
+      // a gesture it didn't see). Showing the link still lets them copy it.
+      window.prompt(t('sets.shareLink'), link)
+    }
   }
 
   return (
@@ -82,6 +97,15 @@ export function WordSetsPage() {
                         ` · ${t('sets.needMore', { count: MIN_SET_ENTRIES })}`}
                     </span>
                   </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShare(s.id)}
+                  aria-label={t('sets.shareLink')}
+                  title={t('sets.shareLink')}
+                  className="rounded-full px-2 py-1 text-sm text-content-muted hover:bg-brand-500/10 hover:text-brand-600"
+                >
+                  {copiedId === s.id ? '✓' : '🔗'}
                 </button>
                 <button
                   type="button"

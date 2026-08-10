@@ -137,6 +137,22 @@ export async function deleteWordSet(id: string): Promise<void> {
   await deleteDoc(setRef(id))
 }
 
+/**
+ * Copy someone else's set into your own account.
+ *
+ * A copy rather than a shared reference, deliberately: the recipient can then
+ * rename it, add their own words, or delete it without any of that reaching
+ * back to the original. Sharing a set is passing on a recipe, not lending a
+ * book — and it means a set can't vanish mid-game because the person who
+ * wrote it deleted theirs.
+ */
+export async function copyWordSet(
+  ownerId: string,
+  source: WordSet,
+): Promise<string> {
+  return createWordSet(ownerId, source.name, source.entries, source.icon)
+}
+
 function randomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]
 }

@@ -89,7 +89,14 @@
     "delete": "Delete set",
     "confirmDelete": "Delete \"{{name}}\"? This can't be undone.",
     "needAccountTitle": "Sign in for word sets",
-    "needAccountBody": "Custom sets are saved to your account."
+    "needAccountBody": "Custom sets are saved to your account.",
+    "shareLink": "Copy share link",
+    "importTitle": "A word set was shared with you",
+    "importSubtitle": "Save a copy to your account and you can host with it.",
+    "importAction": "Save to my sets",
+    "importNotFound": "This set is no longer available.",
+    "importNeedAccount": "Word sets are saved to an account, so you need one to keep a copy.",
+    "importAlreadyYours": "This is your own set — saving makes a second copy."
   },
   "leave": {
     "title": "Leave this game?",

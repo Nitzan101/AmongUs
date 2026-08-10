@@ -13,6 +13,7 @@ import { SignInPage } from './pages/SignInPage'
 import { WordsPage } from './pages/WordsPage'
 import { WordSetsPage } from './pages/WordSetsPage'
 import { WordSetEditPage } from './pages/WordSetEditPage'
+import { ImportWordSetPage } from './pages/ImportWordSetPage'
 
 const router = createBrowserRouter([
   {
@@ -29,6 +30,8 @@ const router = createBrowserRouter([
       { path: '/rules', element: <RulesPage /> },
       { path: '/words', element: <WordsPage /> },
       { path: '/sets', element: <WordSetsPage /> },
+      // Before /sets/:id so a share link isn't read as a set id to edit.
+      { path: '/sets/import/:id', element: <ImportWordSetPage /> },
       { path: '/sets/:id', element: <WordSetEditPage /> },
     ],
   },
