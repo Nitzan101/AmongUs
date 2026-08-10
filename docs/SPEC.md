@@ -73,7 +73,7 @@ Let `V` = maximum possible votes in the game, `k` = the vote number on which the
   as **categories → clusters → words** (words in one cluster are near-twins). The confusing word is
   generated **live by distance** — easy = same cluster, medium = different cluster/same category,
   hard = different category — so there is **no fixed word→word mapping to memorize** and every word
-  can play any role. Currently ~131 words per language across 8 categories; expandable.
+  can play any role. **265 words per language across 11 categories and 59 clusters.**
 - **Custom sets** (account holders): creator writes the **main words**; next to each they may
   optionally fill a **confusing word**, or leave it blank to be auto-filled from the same set.
   Example: "Mom's Birthday" themed around the creator's mother.
@@ -163,8 +163,11 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   *Still open:* an **uploaded image** instead of an emoji, which would share the plumbing with the
   custom-character upload below.
 - ✅ **Imposter-awareness option — BUILT.** See §18.
-- **Word bank size:** currently ~131 words per language. The stated aim was ~250 after the
-  "100 is few" feedback, so both banks are worth another authoring pass.
+- ✅ **Word bank size — DONE.** 265 words per language (from 131 EN / 130 HE), past the ~250 aim.
+  11 categories, 59 clusters, both languages structurally identical. Grown in all three
+  dimensions on purpose, because each feeds a different difficulty: bigger clusters for easy,
+  more clusters per category for medium, three new categories (clothing 👕, entertainment 🎬,
+  household 🏠) for hard.
 - ✅ **Turn circle in half-virtual mode — BUILT.** See §26.
 - ✅ **Warn before leaving unsaved edits — BUILT.** See §20.
 - ✅ **Navigation icons for profile and word sets — BUILT.** `src/components/NavIcons.tsx`: a
