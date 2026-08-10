@@ -97,14 +97,17 @@ export function GameSettingsPanel({
             const value = selectedValue(spec, game)
             if (!value) return null
             return (
+              // Stacked, with the explanation underneath. Side-by-side left
+              // players reading "Team Race" or "Final Guess" with no idea what
+              // either meant — the names only make sense to whoever wrote them.
               <div
                 key={String(spec.key)}
                 className={
-                  'flex items-center justify-between gap-3 rounded-lg px-2 py-1 transition-colors ' +
+                  'rounded-lg px-2 py-1.5 transition-colors ' +
                   (changed === spec.key ? 'bg-sunny-400/20' : '')
                 }
               >
-                <dt className="text-sm text-content-muted">
+                <dt className="text-xs uppercase tracking-wide text-content-muted">
                   {t(spec.labelKey)}
                 </dt>
                 <dd className="text-sm font-bold text-content">
@@ -115,6 +118,11 @@ export function GameSettingsPanel({
                     </span>
                   )}
                 </dd>
+                {value.descKey && (
+                  <dd className="text-xs leading-snug text-content-muted">
+                    {t(value.descKey)}
+                  </dd>
+                )}
               </div>
             )
           })}
@@ -132,33 +140,38 @@ export function GameSettingsPanel({
       <div className="flex flex-col gap-5 px-4 pb-4">
         <p className="text-xs text-content-muted">{t('lobby.settingsHint')}</p>
 
-        {/* Only worth showing once the host actually owns a usable set. */}
-        {usableSets.length > 0 && (
-          <section className="flex flex-col gap-2">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-content-muted">
-              {t('create.words')}
-            </h3>
+        {/* Always shown. Hiding it when the host had no usable sets meant it
+            appeared and disappeared with no explanation — and gave someone
+            with a too-small set no clue why theirs wasn't listed. */}
+        <section className="flex flex-col gap-2">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-content-muted">
+            {t('create.words')}
+          </h3>
+          <OptionCard
+            icon="🎲"
+            title={t('create.wordsRandom')}
+            description={t('create.wordsRandomDesc')}
+            selected={!game.wordSetId}
+            onSelect={() => choose({ wordSetId: null })}
+          />
+          {usableSets.map((s) => (
             <OptionCard
-              icon="🎲"
-              title={t('create.wordsRandom')}
-              description={t('create.wordsRandomDesc')}
-              selected={!game.wordSetId}
-              onSelect={() => choose({ wordSetId: null })}
+              key={s.id}
+              icon={s.icon || DEFAULT_SET_ICON}
+              title={s.name}
+              description={t('sets.wordCount', {
+                count: s.entries?.length ?? MIN_SET_ENTRIES,
+              })}
+              selected={game.wordSetId === s.id}
+              onSelect={() => choose({ wordSetId: s.id })}
             />
-            {usableSets.map((s) => (
-              <OptionCard
-                key={s.id}
-                icon={s.icon || DEFAULT_SET_ICON}
-                title={s.name}
-                description={t('sets.wordCount', {
-                  count: s.entries?.length ?? MIN_SET_ENTRIES,
-                })}
-                selected={game.wordSetId === s.id}
-                onSelect={() => choose({ wordSetId: s.id })}
-              />
-            ))}
-          </section>
-        )}
+          ))}
+          {usableSets.length === 0 && (
+            <p className="px-1 text-xs text-content-muted">
+              {t('create.noUsableSets', { count: MIN_SET_ENTRIES })}
+            </p>
+          )}
+        </section>
 
         {visibleSpecs.map((spec) => (
           <section key={String(spec.key)} className="flex flex-col gap-2">

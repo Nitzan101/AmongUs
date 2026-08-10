@@ -24,6 +24,7 @@ import {
   submitClue,
 } from '../game/gameService'
 import { GameClosedScreen } from '../components/GameClosedScreen'
+import { GameHeaderBar } from '../components/GameHeaderBar'
 import { HostPlayerManager } from '../components/HostPlayerManager'
 import { useGameClosed } from '../game/useGameClosed'
 import { recordGameResult } from '../game/stats'
@@ -36,6 +37,9 @@ type PlayerMap = Map<string, Player>
 
 /** Stable empty set, so the ring's memoisation isn't defeated by a new one. */
 const EMPTY_IDS: Set<string> = new Set()
+
+/** Kept in step with the lobby's own minimum. */
+const MIN_PLAYERS = 4
 
 function WordCard({
   secret,
@@ -1030,6 +1034,7 @@ function ResultPhase({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const enoughPlayers = players.length >= MIN_PLAYERS
 
   return (
     <div className="flex flex-1 flex-col pb-4">
@@ -1057,7 +1062,20 @@ function ResultPhase({
       <div className="mt-auto pt-6">
         {isHost ? (
           <>
-            <Button size="lg" fullWidth onClick={() => startGame(pin)}>
+            {/* Say why up front. This button used to call startGame, get
+                "not enough players" back, and swallow it — so it looked
+                broken, and you only learned the reason back in the lobby. */}
+            {!enoughPlayers && (
+              <p className="mb-2 text-center text-sm text-content-muted">
+                {t('lobby.needMore', { count: MIN_PLAYERS })}
+              </p>
+            )}
+            <Button
+              size="lg"
+              fullWidth
+              disabled={!enoughPlayers}
+              onClick={() => startGame(pin)}
+            >
               {t('game.nextGame')}
             </Button>
             <Button
@@ -1142,7 +1160,10 @@ export function GamePage() {
   useEffect(() => {
     if (!loading && game && user && !me && players.length > 0) {
       forgetGame()
-      navigate(`/lobby/${pin}`, { replace: true })
+      // Home, not the lobby. While a game is running the lobby sends everyone
+      // in it straight back here, so bouncing there flickered between the two
+      // screens forever. They can rejoin with the PIN if they want back in.
+      navigate('/', { replace: true })
     }
   }, [loading, game, user, me, players.length, pin, navigate])
 
@@ -1300,6 +1321,8 @@ export function GamePage() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <GameHeaderBar pin={pin} wordSetName={game.wordSetName} />
+
       {phaseView}
 
       {/* Available in every phase: the host shouldn't have to wait for the

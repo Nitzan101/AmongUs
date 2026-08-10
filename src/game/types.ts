@@ -132,6 +132,12 @@ export interface Game extends GameOptions {
   seatOrder?: string[]
   /** Which game number this is in the room (rotates turn order, drives scoring). */
   gameNumber?: number
+  /**
+   * The name of the custom set this game was dealt from, captured at deal time
+   * so every player can see it — only the host can read their own sets. Null
+   * when the built-in bank was used.
+   */
+  wordSetName?: string | null
   round?: Round
 }
 

@@ -25,7 +25,7 @@ export function LobbyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { pin = '' } = useParams()
-  const { user, isGuest } = useAuth()
+  const { user } = useAuth()
   const { game, players, loading } = useGame(pin)
   const [copied, setCopied] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -37,17 +37,23 @@ export function LobbyPage() {
 
   // Only the host can switch word sets, so only their own sets are needed.
   const isHostUser = game?.hostId === user?.uid
-  const { sets } = useMyWordSets(isHostUser ? user?.uid : undefined, isGuest)
+  // Not gated on `isGuest`: hosting implies an account, and passing the guest
+  // flag here silently returned an empty list, so the Words section vanished
+  // from the panel with nothing to explain why.
+  const { sets } = useMyWordSets(isHostUser ? user?.uid : undefined, false)
   const usableSets = sets.filter(
     (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
   )
 
   // When the host starts the game, everyone in the lobby follows into it.
+  // Follow the host into the game — but only if we're actually in it. Sending
+  // a non-player to the game screen started a loop: it bounced them straight
+  // back here, and this sent them again, flickering between the two forever.
   useEffect(() => {
-    if (game?.status === 'playing') {
+    if (game?.status === 'playing' && me) {
       navigate(`/game/${pin}`, { replace: true })
     }
-  }, [game?.status, pin, navigate])
+  }, [game?.status, me, pin, navigate])
 
   const closed = useGameClosed(loading, game)
 
@@ -86,21 +92,24 @@ export function LobbyPage() {
 
   const isHost = game.hostId === user?.uid
 
-  if (game.status === 'playing') {
-    // The effect above redirects into the game; show a brief hand-off.
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="animate-pulse text-content-muted">{t('lobby.starting')}</div>
-      </div>
-    )
-  }
-
+  // Checked before the hand-off below: someone who has left or been removed is
+  // not "about to start a game", and telling them so was half of a redirect
+  // loop. They can rejoin with the PIN and wait for the next game.
   if (!me) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <div className="text-6xl">👋</div>
         <h1 className="text-2xl font-black text-content">{t('lobby.notInGame')}</h1>
         <Button onClick={() => navigate(`/join/${pin}`)}>{t('join.submit')}</Button>
+      </div>
+    )
+  }
+
+  if (game.status === 'playing') {
+    // The effect above redirects into the game; show a brief hand-off.
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="animate-pulse text-content-muted">{t('lobby.starting')}</div>
       </div>
     )
   }

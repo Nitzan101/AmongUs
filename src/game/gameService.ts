@@ -427,6 +427,19 @@ async function removeFromRound(pin: string, uid: string): Promise<void> {
   }
   // Their vote no longer counts toward "everyone voted".
   await deleteDoc(voteRef(pin, uid)).catch(() => {})
+
+  // People walking out can shrink the table to two just as an elimination
+  // can, and the same rule has to apply: with two left there is no majority
+  // to be had, so the game is over. Without this the round carried on with a
+  // pair of players voting at each other, and a tie simply started another.
+  const remaining = (updates['round.aliveIds'] as string[]) ?? round.aliveIds
+  const alreadyOver = round.phase === 'recap' || round.phase === 'result'
+  if (!alreadyOver && remaining.length <= 2) {
+    // If the imposter is one of the ones who walked, the crew have it by
+    // default — there is nobody left to catch.
+    const imposterStillIn = await findImposter(pin, remaining)
+    await finalizeGame(pin, imposterStillIn ? 'imposter-wins' : 'crew-wins', false)
+  }
 }
 
 /**
@@ -447,10 +460,17 @@ export async function startGame(pin: string): Promise<void> {
   // A custom set replaces the built-in bank for this game. If it has since been
   // deleted or emptied, fall back to the bank rather than failing to deal.
   let setEntries: WordSetEntry[] | undefined
+  // Recorded on the game so every player can see which set they're playing
+  // from. Only the host can read their own sets, so this is the one chance to
+  // capture the name; null when the built-in bank is used.
+  let wordSetName: string | null = null
   if (game.wordSetId) {
     const set = await getWordSet(game.wordSetId).catch(() => null)
     const usable = set ? cleanEntries(set.entries) : []
-    if (usable.length >= MIN_SET_ENTRIES) setEntries = usable
+    if (usable.length >= MIN_SET_ENTRIES) {
+      setEntries = usable
+      wordSetName = set?.name ?? null
+    }
   }
 
   const assignment = buildAssignment(playerIds, {
@@ -471,6 +491,7 @@ export async function startGame(pin: string): Promise<void> {
     status: 'playing',
     seatOrder: assignment.seatOrder,
     gameNumber: assignment.gameNumber,
+    wordSetName,
     round: {
       number: 1,
       phase: 'clues',

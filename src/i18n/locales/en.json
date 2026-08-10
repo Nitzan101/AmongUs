@@ -38,7 +38,7 @@
     "awarenessKnows": "They know",
     "awarenessKnowsDesc": "The classic game — the imposter knows, and has to bluff.",
     "awarenessHidden": "Hidden role",
-    "awarenessHiddenDesc": "Nobody is told. The imposter plays honestly, with no idea it's them.",
+    "awarenessHiddenDesc": "Nobody is told who it is — not even the imposter. Everyone has to work out from the clues whether their own word is the odd one out.",
     "scoring": "Scoring",
     "scoringTeamRace": "Team Race",
     "scoringTeamRaceDesc": "The whole crew scores by how fast they catch the imposter.",
@@ -62,7 +62,8 @@
     "turnDisplayList": "Numbered list",
     "turnDisplayListDesc": "A simple list, easy to read top to bottom.",
     "turnDisplayCircle": "Circle",
-    "turnDisplayCircleDesc": "A ring like the table you are sitting at, marking who starts."
+    "turnDisplayCircleDesc": "A ring like the table you are sitting at, marking who starts.",
+    "noUsableSets": "No word sets of yours to play from yet. A set needs at least {{count}} words — make one under Word sets on the home screen."
   },
   "sets": {
     "title": "Word sets",
