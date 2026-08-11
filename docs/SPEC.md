@@ -147,7 +147,10 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
   Guest join stays untouched. The encouragement now has something concrete to offer, so it sits on
   the **final scoreboard** — the one moment a guest can see what an account would have kept — as a
   quiet line under the scores rather than a popup: an offer, not a toll. Nothing gates on it, and
-  it appears nowhere else in the flow.
+  it appears nowhere else in the flow. It is a *sentence*, not a button, and §24 says why.
+- ✅ **Upgrading a guest account in place — RETIRED, not built.** See §24. It only ever existed to
+  make signing in mid-room safe; mid-room sign-in is now simply not offered, so the scenario is
+  gone rather than unsolved.
 - ✅ **Greet a guest as "Guest" — BUILT.** `HomePage` falls back to a new `auth.guest` key
   ("Guest" / "אורח") when there's no display name or email, instead of rendering "Hi, !". The
   guest's *game* nickname is deliberately not reused: it's chosen per game rather than stored on
@@ -442,13 +445,31 @@ five screens that each re-derived it use that instead, so it cannot drift apart 
 - A first-time visitor with no user at all gets no greeting; there is nobody to greet yet.
 - `SignInPage` now leaves only once there is a real account.
 
-**Known consequence, not yet handled:** signing in while a guest creates a *new* Firebase user, so
-the uid changes and the old anonymous identity is orphaned. A guest who signs in while sitting in
-a game will no longer match their player document and will have to rejoin. The proper fix is to
-upgrade the anonymous account in place (`linkWithPopup` / `linkWithCredential`, falling back to a
-normal sign-in on `auth/credential-already-in-use`), which preserves the uid. Deliberately left
-out of this change: it rewrites the sign-in paths, and those cannot be tested here without real
-Google and email credentials.
+**Signing in changes your uid — so it can't be done from inside a room.** Signing in creates a
+*new* Firebase user, orphaning the anonymous one. A guest who did it mid-room stopped matching
+their own player document and left a **ghost** behind: still in the player list, so the next deal
+included it, and it could be dealt the imposter card — an imposter nobody can vote for, that the
+early-end check reads as "still in". Only a kick cleared it.
+
+The fix is to not offer it. The result-phase guest nudge was the only route into `/signin` from
+inside a room; every other one sits on a screen a guest with an active game cannot reach, because
+`HomePage` sends them back into their game before they can tap anything. So the nudge is now a
+sentence rather than a button: it still says what an account would keep, at the moment that lands,
+and anyone who wants one leaves the room first — a path that already cleans up properly.
+
+**Two alternatives were considered and rejected**, both more expensive for the same bug:
+
+- *Leave the game automatically before signing in.* Correct, but it spends the player's running
+  room total to buy a convenience, and the manual route already exists.
+- *Upgrade the anonymous account in place* (`linkWithPopup` / `linkWithCredential`, falling back to
+  a normal sign-in on `auth/credential-already-in-use`). This preserves the uid **and** the score,
+  and is the only option that would let someone sign in mid-game at all. But it exists solely to
+  make mid-game sign-in safe, so closing that door retires it: there is no longer a scenario it
+  serves. It also rewrites the sign-in paths, whose Google branch cannot be tested here without
+  real credentials.
+
+Residual, accepted: typing `/signin` directly while in a game still works and still leaves a ghost.
+That is not a party-night gesture, and the host can kick it.
 
 ## 25. Joining a game already in progress
 

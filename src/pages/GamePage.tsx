@@ -1043,7 +1043,6 @@ function ResultPhase({
   isGuest: boolean
 }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const enoughPlayers = players.length >= MIN_PLAYERS
 
   return (
@@ -1054,17 +1053,19 @@ function ResultPhase({
         {/* The one moment a guest can see what an account would have kept:
             they've just finished a game that counted for nobody. A quiet line
             under the scores, not a popup — joining is meant to stay
-            frictionless, and this is an offer rather than a toll. */}
+            frictionless, and this is an offer rather than a toll.
+
+            Deliberately not a button. Signing in mints a *new* Firebase user,
+            so the uid changes and the guest stops matching the player document
+            they are sitting in — leaving a ghost in the room that the next
+            deal happily includes, and that can be dealt the imposter card,
+            making the imposter someone nobody can vote for. This was the only
+            way into sign-in from inside a room, so saying it in words instead
+            of offering the tap closes that off entirely. Anyone who wants an
+            account can leave the room first, which already cleans up properly. */}
         {isGuest && (
           <div className="mt-4 rounded-2xl border border-line bg-surface-raised p-4 text-center">
             <p className="text-sm text-content-muted">{t('game.guestNudge')}</p>
-            <Button
-              variant="ghost"
-              className="mt-1 text-brand-600"
-              onClick={() => navigate('/signin')}
-            >
-              {t('home.signIn')} →
-            </Button>
           </div>
         )}
       </div>
