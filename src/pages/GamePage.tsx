@@ -1215,9 +1215,14 @@ export function GamePage() {
     // Mirrors the guard in `endIfTooFewAlive`: only between rounds' work, never
     // during tally/reveal/guess, which resolve their own endings.
     if (round.phase !== 'clues' && round.phase !== 'voting') return
-    if (round.aliveIds.length > 2) return
+    // Cheap gate so this isn't a Firestore read on every snapshot: only worth
+    // asking once the table is down to two, or once somebody has actually
+    // gone — a player count below the dealt turn order means someone left or
+    // was removed, which is the only way the imposter can vanish mid-game.
+    const someoneGone = players.length < round.turnOrder.length
+    if (round.aliveIds.length > 2 && !someoneGone) return
     endIfTooFewAlive(pin)
-  }, [isHost, round?.aliveIds.length, round?.phase, round, pin])
+  }, [isHost, round?.aliveIds.length, round?.phase, round, players.length, pin])
 
   // The host drives the reveal once everyone has voted.
   useEffect(() => {

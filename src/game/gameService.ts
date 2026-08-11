@@ -466,12 +466,28 @@ export async function endIfTooFewAlive(pin: string): Promise<void> {
   // during one finalised the game underneath `continueAfterReveal`, which
   // then had nothing coherent to continue and left the button dead.
   if (round.phase !== 'clues' && round.phase !== 'voting') return
-  if (round.aliveIds.length > 2) return
 
-  // If the imposter is one of the ones who walked, the crew have it by
-  // default — there is nobody left to catch.
+  // Two conditions end a game early, and both come from people leaving rather
+  // than being caught:
+  //
+  //  * The imposter has gone. There is nobody left to catch, so the crew have
+  //    it — however many players remain. Without this the round ran on with no
+  //    imposter in it at all, which nobody can ever win.
+  //  * Only two are left. No majority is possible, so the imposter takes it,
+  //    exactly as when an elimination reaches the final two.
   const imposterStillIn = await findImposter(pin, round.aliveIds)
-  await finalizeGame(pin, imposterStillIn ? 'imposter-wins' : 'crew-wins', false)
+  if (!imposterStillIn) {
+    // Say who it *was*. Scoring needs a real imposter id, and the usual source
+    // — the player just eliminated — is empty here, because nobody was
+    // eliminated: they walked. The seating still lists them, since it records
+    // who the game was dealt to.
+    const departed = await findImposter(pin, game.seatOrder ?? round.turnOrder)
+    await finalizeGame(pin, 'crew-wins', false, departed ?? undefined)
+    return
+  }
+  if (round.aliveIds.length <= 2) {
+    await finalizeGame(pin, 'imposter-wins', false)
+  }
 }
 
 /**
@@ -838,6 +854,13 @@ async function finalizeGame(
   pin: string,
   outcome: Outcome,
   guessCorrect: boolean,
+  /**
+   * Who the imposter was, when the usual sources can't say. A crew win
+   * normally means the imposter was just eliminated, so it reads
+   * `eliminatedId` — but a game that ends because the imposter *left* has no
+   * elimination, and scoring with an empty id crashed.
+   */
+  imposterIdOverride?: string,
 ): Promise<void> {
   const { db } = requireDb()
   const snap = await getDoc(gameRef(pin))
@@ -845,9 +868,10 @@ async function finalizeGame(
   const round = game.round!
   const playerIds = game.seatOrder ?? round.aliveIds
   const imposterId =
-    outcome === 'crew-wins'
+    imposterIdOverride ??
+    (outcome === 'crew-wins'
       ? (round.eliminatedId ?? '')
-      : ((await findImposter(pin, round.aliveIds)) ?? '')
+      : ((await findImposter(pin, round.aliveIds)) ?? ''))
   const crewId = playerIds.find((id) => id !== imposterId) ?? playerIds[0]
   const crewSecret = await getDoc(secretRef(pin, crewId))
   const mainWord = crewSecret.exists() ? (crewSecret.data() as Secret).word : ''
