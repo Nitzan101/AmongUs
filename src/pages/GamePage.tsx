@@ -19,6 +19,7 @@ import {
   resolveGuessReview,
   resolveVote,
   skipGuess,
+  applyMyScore,
   endIfTooFewAlive,
   revealVotes,
   startGame,
@@ -1211,18 +1212,43 @@ export function GamePage() {
   // leaving can reach the final two just as an elimination can. Only the host
   // may write everyone's scores, so it can't be the departing player.
   useEffect(() => {
-    if (!isHost || !round) return
+    if (!me || !round || !game) return
     // Mirrors the guard in `endIfTooFewAlive`: only between rounds' work, never
     // during tally/reveal/guess, which resolve their own endings.
     if (round.phase !== 'clues' && round.phase !== 'voting') return
-    // Cheap gate so this isn't a Firestore read on every snapshot: only worth
-    // asking once the table is down to two, or once somebody has actually
-    // gone — a player count below the dealt turn order means someone left or
-    // was removed, which is the only way the imposter can vanish mid-game.
-    const someoneGone = players.length < round.turnOrder.length
+    // Compared against the *dealt* seating, not the live turn order.
+    //
+    // This is what made the imposter-leaving case fail at random. When the
+    // leaver's cleanup succeeded, it trimmed `turnOrder` to match the player
+    // list — so "someone gone" read as false, and with three still alive the
+    // check returned before ever asking whether the imposter was among them.
+    // It only worked when the cleanup had *failed* and left the lists ragged.
+    // `seatOrder` is written once when the game is dealt and never shrinks, so
+    // it is a truthful record of how many started.
+    const dealtCount = game.seatOrder?.length ?? round.turnOrder.length
+    const someoneGone = players.length < dealtCount
     if (round.aliveIds.length > 2 && !someoneGone) return
-    endIfTooFewAlive(pin)
-  }, [isHost, round?.aliveIds.length, round?.phase, round, players.length, pin])
+    // Any player, not just the host — a host who has left or whose phone is
+    // asleep must not be able to strand everyone else in a game that should
+    // already be over. Several devices may reach this at once; the writes are
+    // identical, so the duplicates are harmless.
+    endIfTooFewAlive(pin).catch((e) =>
+      console.error('endIfTooFewAlive failed', e),
+    )
+  }, [me, game, round?.aliveIds.length, round?.phase, round, players.length, pin])
+
+  // Once a game is over, pay yourself the points it awarded. Each device does
+  // its own, because writing another player's document is host-only and
+  // finalising is no longer the host's job alone.
+  useEffect(() => {
+    if (!me || !user || !game || !round) return
+    if (round.phase !== 'recap' && round.phase !== 'result') return
+    const line = round.scoreBreakdown?.[user.uid]
+    if (!line) return
+    applyMyScore(pin, user.uid, game.gameNumber ?? 1, line.delta).catch((e) =>
+      console.error('applyMyScore failed', e),
+    )
+  }, [me, user, game, round, pin])
 
   // The host drives the reveal once everyone has voted.
   useEffect(() => {

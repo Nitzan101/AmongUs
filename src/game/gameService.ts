@@ -373,12 +373,17 @@ export async function leaveGame(
 ): Promise<void> {
   requireDb()
 
-  // Cleanup FIRST, while we still have the right to do it. The rules only let
+  // Cleanup FIRST, while we still have the right to do it: the rules only let
   // a current player (or the host) touch the round, so deleting ourselves and
-  // then tidying up meant the tidy-up was silently denied: the leaver stayed
-  // in `aliveIds`, could still be voted for, and the round waited on a vote
-  // that was never coming.
-  await removeFromRound(pin, uid)
+  // then tidying up meant the tidy-up was silently denied.
+  //
+  // But never let that stop the leaving. When this threw, the delete below
+  // never ran and the player didn't leave at all — they came back as though
+  // nothing had happened. Leaving must always succeed; the round being tidy is
+  // a bonus, and `endIfTooFewAlive` repairs it from the player list anyway.
+  await removeFromRound(pin, uid).catch((e) => {
+    console.error('round cleanup on leave failed; leaving anyway', e)
+  })
 
   await deleteDoc(playerRef(pin, uid))
   forgetGame()
@@ -910,7 +915,7 @@ async function finalizeGame(
    */
   imposterIdOverride?: string,
 ): Promise<void> {
-  const { db } = requireDb()
+  requireDb()
   const snap = await getDoc(gameRef(pin))
   const game = snap.data() as Game
   const round = game.round!
@@ -935,13 +940,14 @@ async function finalizeGame(
     voteHistory: round.voteHistory ?? [],
   })
 
-  const playersSnap = await getDocs(playersRef(pin))
-  const batch = writeBatch(db)
-  playersSnap.docs.forEach((d) => {
-    const delta = scoreLines[d.id]?.delta ?? 0
-    if (delta) batch.update(d.ref, { score: increment(delta) })
-  })
-  batch.update(gameRef(pin), {
+  // Only the round is written here — not everyone's scores.
+  //
+  // Writing other players' documents is a host-only right, which made ending
+  // a game a host-only act. That was the deeper reason endings kept not
+  // happening: if the host had left, or their phone was asleep, nobody could
+  // finish the game. Now any player can end it, and each device applies its
+  // own points from `scoreBreakdown` (see `applyMyScore`).
+  await updateDoc(gameRef(pin), {
     'round.phase': 'recap',
     'round.outcome': outcome,
     'round.imposterId': imposterId,
@@ -949,7 +955,33 @@ async function finalizeGame(
     'round.guessCorrect': guessCorrect,
     'round.scoreBreakdown': scoreLines,
   })
-  await batch.commit()
+}
+
+/**
+ * Add this game's points to your own running total — **your own only**.
+ *
+ * The counterpart to finalising writing just the round: everyone applies their
+ * own line from `scoreBreakdown`, which each player is allowed to do, instead
+ * of the host writing everybody's. `scoredGame` makes it idempotent, since
+ * every device sees the finished round repeatedly and a reload must not pay
+ * out twice.
+ */
+export async function applyMyScore(
+  pin: string,
+  uid: string,
+  gameNumber: number,
+  delta: number,
+): Promise<void> {
+  requireDb()
+  const key = `${pin}:${gameNumber}`
+  const ref = playerRef(pin, uid)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return
+  if ((snap.data() as Player & { scoredGame?: string }).scoredGame === key) return
+  await updateDoc(ref, {
+    scoredGame: key,
+    ...(delta ? { score: increment(delta) } : {}),
+  })
 }
 
 /** Return the room to the lobby for another game (host). */
