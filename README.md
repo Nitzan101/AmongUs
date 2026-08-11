@@ -53,8 +53,12 @@ rules, and the public deploy. Since going live: Google sign-in was fixed for the
 domains (see `resolveAuthDomain` in `src/lib/firebase.ts`), the host can pick the word language
 independently of the UI language, and the tutorial explains the main-screen buttons.
 
-What's left is the open backlog in [docs/SPEC.md §10](docs/SPEC.md) — most notably the
-**imposter-awareness host option**, which §3 records as agreed but which was never built.
+Since then the backlog in [docs/SPEC.md §10](docs/SPEC.md) has been worked through: the
+imposter-awareness option, the turn circle in person, a bigger word bank, custom-set sharing and
+icons, stats and badges, joining mid-game, guarded unsaved edits, and the leaving rules. Four
+items remain open, and each is blocked on something rather than merely unstarted — in-game voice
+chat, uploaded images for characters and set icons, upgrading a guest account in place on
+sign-in, and measuring which host options anyone actually changes. §10 says what blocks each.
 
 ### Deploying an update
 
