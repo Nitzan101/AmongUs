@@ -138,6 +138,21 @@ export interface Game extends GameOptions {
    * when the built-in bank was used.
    */
   wordSetName?: string | null
+  /**
+   * A custom set lent to the room by a host who left.
+   *
+   * Kept apart from `wordSetId` so it survives the new host switching to the
+   * built-in bank: sets belong to accounts, and the person who inherits the
+   * room never sees this one in their own list, so once `wordSetId` moved off
+   * it there would be no way back to it.
+   */
+  sharedWordSetId?: string | null
+  /**
+   * Set when a departing host kept their set to themselves while a game was
+   * running. The round in progress was already dealt from it, so the room
+   * returns to the built-in bank once that game finishes rather than mid-play.
+   */
+  wordSetRevertAfterGame?: boolean | null
   round?: Round
 }
 

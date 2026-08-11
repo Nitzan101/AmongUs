@@ -17,7 +17,8 @@ import { EditIdentityDialog } from '../components/EditIdentityDialog'
 import { GameClosedScreen } from '../components/GameClosedScreen'
 import { useGameClosed } from '../game/useGameClosed'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
-import { MIN_SET_ENTRIES, useMyWordSets } from '../game/wordSets'
+import { MIN_SET_ENTRIES, useMyWordSets, useWordSetById } from '../game/wordSets'
+import type { WordSetHandover } from '../game/gameService'
 
 const MIN_PLAYERS = 4
 
@@ -44,6 +45,11 @@ export function LobbyPage() {
   const usableSets = sets.filter(
     (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
   )
+  // A set a previous host lent the room, and the set in play — the latter only
+  // to find out whether it's ours, which decides if leaving has to ask about it.
+  const loanedSet = useWordSetById(isHostUser ? game?.sharedWordSetId : null)
+  const activeSet = useWordSetById(isHostUser ? game?.wordSetId : null)
+  const myWordSet = activeSet?.ownerId === user?.uid ? activeSet : null
 
   // When the host starts the game, everyone in the lobby follows into it.
   // Follow the host into the game — but only if we're actually in it. Sending
@@ -126,8 +132,8 @@ export function LobbyPage() {
     }
   }
 
-  async function handleLeave(newHostId?: string) {
-    if (user) await leaveGame(pin, user.uid, newHostId)
+  async function handleLeave(newHostId?: string, wordSet?: WordSetHandover) {
+    if (user) await leaveGame(pin, user.uid, newHostId, wordSet)
     navigate('/')
   }
 
@@ -165,6 +171,7 @@ export function LobbyPage() {
         isHost={isHost}
         uid={user?.uid ?? ''}
         usableSets={usableSets}
+        loanedSet={loanedSet}
       />
 
       <div className="mt-6 flex items-center justify-between px-1">
@@ -267,6 +274,7 @@ export function LobbyPage() {
         <LeaveGameDialog
           isHost={isHost}
           others={players.filter((p) => p.id !== user?.uid)}
+          myWordSet={myWordSet}
           onCancel={() => setLeaving(false)}
           onLeave={handleLeave}
           onClose={handleCloseGame}

@@ -24,7 +24,9 @@ import {
   revealVotes,
   startGame,
   submitClue,
+  type WordSetHandover,
 } from '../game/gameService'
+import { useWordSetById } from '../game/wordSets'
 import { GameClosedScreen } from '../components/GameClosedScreen'
 import { GameHeaderBar } from '../components/GameHeaderBar'
 import { HostPlayerManager } from '../components/HostPlayerManager'
@@ -1127,8 +1129,13 @@ export function GamePage() {
   const clues = useClues(pin, isFullVirtual)
   const [leaving, setLeaving] = useState(false)
 
-  async function handleLeave(newHostId?: string) {
-    if (user) await leaveGame(pin, user.uid, newHostId)
+  // Only to learn whether the set in play is this host's own, which decides
+  // whether leaving has to ask what becomes of it.
+  const activeSet = useWordSetById(isHost ? game?.wordSetId : null)
+  const myWordSet = activeSet?.ownerId === uid ? activeSet : null
+
+  async function handleLeave(newHostId?: string, wordSet?: WordSetHandover) {
+    if (user) await leaveGame(pin, user.uid, newHostId, wordSet)
     navigate('/')
   }
 
@@ -1391,6 +1398,8 @@ export function GamePage() {
         <LeaveGameDialog
           isHost={isHost}
           others={players.filter((p) => p.id !== uid)}
+          myWordSet={myWordSet}
+          midGame={game?.status === 'playing'}
           onCancel={() => setLeaving(false)}
           onLeave={handleLeave}
           onClose={handleCloseGame}

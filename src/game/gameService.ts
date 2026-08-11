@@ -371,6 +371,52 @@ export async function kickPlayer(pin: string, playerId: string): Promise<void> {
 }
 
 /**
+ * What a departing host decided about the custom set their room is playing
+ * with: lend it to whoever takes over, or keep it to themselves.
+ */
+export type WordSetHandover = 'keep' | 'revoke'
+
+/**
+ * Settle what happens to a leaving host's own word set.
+ *
+ * Called while they are still the host, because that is the only moment they
+ * may write anything on the game document other than `round`.
+ *
+ * Nothing is done for the built-in bank, and nothing for a host who is only
+ * borrowing someone else's set — it was never theirs to lend or take back.
+ */
+async function handOverWordSet(
+  pin: string,
+  decision: WordSetHandover,
+): Promise<void> {
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) return
+  const game = snap.data() as Game
+  if (!game.wordSetId) return
+
+  if (decision === 'keep') {
+    await updateDoc(gameRef(pin), {
+      sharedWordSetId: game.wordSetId,
+      wordSetRevertAfterGame: false,
+    })
+    return
+  }
+
+  if (game.status === 'lobby') {
+    await updateDoc(gameRef(pin), { wordSetId: null, sharedWordSetId: null })
+    return
+  }
+
+  // Mid-game the words are already dealt and half of them said out loud, so
+  // pulling the set now would spoil the round without hiding anything. It goes
+  // back to the bank when the room next returns to the lobby.
+  await updateDoc(gameRef(pin), {
+    wordSetRevertAfterGame: true,
+    sharedWordSetId: null,
+  })
+}
+
+/**
  * Leave a game. If the leaver was the host, leadership passes to `newHostId`
  * when given (the host's own choice) or to whoever remains, so the game can
  * still be driven; the room is deleted if nobody is left.
@@ -379,8 +425,17 @@ export async function leaveGame(
   pin: string,
   uid: string,
   newHostId?: string,
+  /** Only meaningful for a host leaving a room set to one of their own sets. */
+  wordSet?: WordSetHandover,
 ): Promise<void> {
   requireDb()
+
+  // First, while the game document is still ours to write.
+  if (wordSet) {
+    await handOverWordSet(pin, wordSet).catch((e) =>
+      console.error('word set handover failed', e),
+    )
+  }
 
   // Before anything else: if the imposter is the one walking, the game is
   // over — there is nobody left to catch. Done here, while we are still a
@@ -1061,7 +1116,17 @@ export async function applyMyScore(
 /** Return the room to the lobby for another game (host). */
 export async function backToLobby(pin: string): Promise<void> {
   requireDb()
+  const snap = await getDoc(gameRef(pin))
+  const game = snap.exists() ? (snap.data() as Game) : null
   await clearVotes(pin)
   await clearClues(pin)
-  await updateDoc(gameRef(pin), { status: 'lobby', round: null })
+  await updateDoc(gameRef(pin), {
+    status: 'lobby',
+    round: null,
+    // A host who left mid-game without lending their set only lent it for the
+    // game that was already running. That game is over, so it goes back now.
+    ...(game?.wordSetRevertAfterGame
+      ? { wordSetId: null, wordSetRevertAfterGame: false, wordSetName: null }
+      : {}),
+  })
 }

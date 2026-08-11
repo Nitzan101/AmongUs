@@ -536,6 +536,45 @@ identical `pin:gameNumber` returned false and changed nothing; a genuinely diffe
 incremented correctly. Badge thresholds checked at zero, at target, past target (progress caps at
 the target rather than overshooting), and the one-year badge at 400 days versus 10.
 
+## 29. A host's word set when hosting changes hands
+
+A set belongs to an account, not to a room. When a host who chose one of their own sets hands the
+room on, the set is the one thing that can't simply carry over — the new host doesn't own it and
+so would never see it in their own list, while the room would go on dealing from it.
+
+So leaving asks. The question appears only when the room is set to a **custom set the leaver owns**
+— the built-in bank needs no permission, and a host who merely inherited a set was never in a
+position to lend or withhold it.
+
+- **Let them keep playing with it** lends the set to the room: `sharedWordSetId` on the game
+  document. Kept apart from `wordSetId` deliberately — the new host must be able to switch to the
+  built-in bank and back, and once `wordSetId` had moved off a set they can't see, there would be
+  no route back to it. The lobby lists the lent set alongside the host's own, labelled as left
+  behind by the previous host.
+- **Take it back** ends the loan. In the lobby that's immediate: `wordSetId` clears and the room is
+  on the built-in bank before the leaver's screen has closed. Mid-game it can't be, because the
+  words are already dealt and half of them said out loud — pulling the set would spoil the round
+  without hiding anything the table hasn't seen. `wordSetRevertAfterGame` marks it instead, and
+  `backToLobby` clears the set when that game finishes.
+- **Default is to lend.** The room is playing with the set right now and everyone has already read
+  its words; carrying on is the answer that changes nothing, so taking it back is the deliberate tap.
+- **Closing the game asks nothing** — the room and everything about it is about to be deleted.
+- **A host who vanishes rather than leaves** (closed tab, dead phone) never answers, so their set
+  stays selected with nobody able to identify it. That state is now named rather than mysterious:
+  the lobby says the room is set to a set belonging to a host who has left, and that changing it is
+  one-way. Reverting automatically was rejected — a host whose phone sleeps for 45 seconds loses
+  hosting to the migration rule, and silently swapping their words out from under the table is
+  worse than a sentence of explanation.
+- **No rules change.** Sets are readable by any signed-in user, which is what makes a loan work at
+  all, and the handover is written while the leaver is still host — the only moment they may write
+  anything on the game document besides `round`.
+
+Verified against real Firestore across two accounts: lending recorded `sharedWordSetId` and left
+`wordSetId` in place; revoking in the lobby cleared it immediately; revoking mid-game left the
+running game dealt from the set and cleared it on the return to the lobby. Signed in as a second
+account that did not own the set, the lent set appeared in the picker already selected, and the
+un-lent one produced the explanation instead.
+
 ## 14. Leaving a game
 
 - **Anyone can leave at any time** — the option is on the lobby *and* on every phase of an active

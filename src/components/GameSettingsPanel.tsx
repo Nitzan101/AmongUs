@@ -29,12 +29,19 @@ export function GameSettingsPanel({
   isHost,
   uid,
   usableSets,
+  loanedSet,
 }: {
   pin: string
   game: Game
   isHost: boolean
   uid: string
   usableSets: WordSet[]
+  /**
+   * A set left behind by a host who lent it on their way out. Listed beside the
+   * host's own, because it isn't in their account and would otherwise be
+   * unreachable — the room could play with it but never choose it again.
+   */
+  loanedSet?: WordSet | null
 }) {
   const { t } = useTranslation()
   const editable = isHost && game.status === 'lobby'
@@ -166,11 +173,31 @@ export function GameSettingsPanel({
               onSelect={() => choose({ wordSetId: s.id })}
             />
           ))}
-          {usableSets.length === 0 && (
+          {loanedSet && !usableSets.some((s) => s.id === loanedSet.id) && (
+            <OptionCard
+              icon={loanedSet.icon || DEFAULT_SET_ICON}
+              title={loanedSet.name}
+              description={t('create.wordsLentDesc')}
+              selected={game.wordSetId === loanedSet.id}
+              onSelect={() => choose({ wordSetId: loanedSet.id })}
+            />
+          )}
+          {usableSets.length === 0 && !loanedSet && (
             <p className="px-1 text-xs text-content-muted">
               {t('create.noUsableSets', { count: MIN_SET_ENTRIES })}
             </p>
           )}
+          {/* Nothing above is selected, yet the room is set to a custom set:
+              a host vanished without handing it over (a closed tab rather
+              than Leave). Say so, rather than showing a Words list where the
+              choice is mysteriously nobody's. */}
+          {usingCustomSet &&
+            game.wordSetId !== loanedSet?.id &&
+            !usableSets.some((s) => s.id === game.wordSetId) && (
+              <p className="px-1 text-xs text-content-muted">
+                {t('create.wordsOrphaned')}
+              </p>
+            )}
         </section>
 
         {visibleSpecs.map((spec) => (

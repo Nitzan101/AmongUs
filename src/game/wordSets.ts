@@ -175,6 +175,38 @@ export function pickWordsFromSet(entries: WordSetEntry[]): WordAssignment {
   }
 }
 
+/**
+ * Load one set by id, whoever owns it.
+ *
+ * Any signed-in user may read a set, which is what makes lending one to a room
+ * work: a host who inherits a room never owned the set it is playing with, so
+ * it can't come from their own list.
+ */
+export function useWordSetById(id: string | null | undefined) {
+  const [set, setSet] = useState<WordSet | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!id) {
+      setSet(null)
+      return
+    }
+    getWordSet(id)
+      .then((s) => {
+        if (!cancelled) setSet(s)
+      })
+      .catch(() => {
+        // A deleted set just isn't there; the caller falls back to the bank.
+        if (!cancelled) setSet(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  return set
+}
+
 /** Load the signed-in user's sets (empty for guests). */
 export function useMyWordSets(uid: string | undefined, isGuest: boolean) {
   const [sets, setSets] = useState<WordSet[]>([])
