@@ -461,7 +461,11 @@ export async function endIfTooFewAlive(pin: string): Promise<void> {
   const game = snap.data() as Game
   const round = game.round
   if (game.status !== 'playing' || !round) return
-  if (round.phase === 'recap' || round.phase === 'result') return
+  // Only while the round is idle. `tally`, `reveal` and `guess` are each
+  // mid-resolution and already decide the ending themselves — stepping in
+  // during one finalised the game underneath `continueAfterReveal`, which
+  // then had nothing coherent to continue and left the button dead.
+  if (round.phase !== 'clues' && round.phase !== 'voting') return
   if (round.aliveIds.length > 2) return
 
   // If the imposter is one of the ones who walked, the crew have it by

@@ -739,7 +739,13 @@ function RevealPhase({
       <HostOrWait
         isHost={isHost}
         label={t('game.continue')}
-        onClick={() => continueAfterReveal(pin)}
+        // Logged rather than swallowed: a Continue that quietly did nothing
+        // gave a stuck game with no clue why.
+        onClick={() =>
+          continueAfterReveal(pin).catch((e) =>
+            console.error('continueAfterReveal failed', e),
+          )
+        }
         waitKey="game.waitingHost"
       />
     </div>
@@ -1206,7 +1212,9 @@ export function GamePage() {
   // may write everyone's scores, so it can't be the departing player.
   useEffect(() => {
     if (!isHost || !round) return
-    if (round.phase === 'recap' || round.phase === 'result') return
+    // Mirrors the guard in `endIfTooFewAlive`: only between rounds' work, never
+    // during tally/reveal/guess, which resolve their own endings.
+    if (round.phase !== 'clues' && round.phase !== 'voting') return
     if (round.aliveIds.length > 2) return
     endIfTooFewAlive(pin)
   }, [isHost, round?.aliveIds.length, round?.phase, round, pin])
