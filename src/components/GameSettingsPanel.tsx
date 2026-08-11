@@ -46,6 +46,12 @@ export function GameSettingsPanel({
   const { t } = useTranslation()
   const editable = isHost && game.status === 'lobby'
 
+  // Mirrored from the <details> element rather than driving it, so the browser
+  // keeps owning the open/closed state and the label can still name what the
+  // next tap does — "tap to change" on something already open was describing
+  // the tap that got you there.
+  const [open, setOpen] = useState(false)
+
   // Which setting changed most recently, so a player who joined a minute ago
   // notices the host switching the game out from under them.
   const [changed, setChanged] = useState<string | null>(null)
@@ -95,9 +101,12 @@ export function GameSettingsPanel({
   // Read-only: one compact line per setting, rather than the full cards.
   if (!editable) {
     return (
-      <details className="mt-4 rounded-2xl border border-line bg-surface-raised">
+      <details
+        className="mt-4 rounded-2xl border border-line bg-surface-raised"
+        onToggle={(e) => setOpen(e.currentTarget.open)}
+      >
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-content-muted hover:text-content">
-          {t('lobby.settings')}
+          {open ? t('lobby.settingsHide') : t('lobby.settings')}
         </summary>
         <dl className="flex flex-col gap-1 px-4 pb-3">
           {visibleSpecs.map((spec) => {
@@ -139,9 +148,12 @@ export function GameSettingsPanel({
   }
 
   return (
-    <details className="mt-4 rounded-2xl border border-line bg-surface-raised">
+    <details
+      className="mt-4 rounded-2xl border border-line bg-surface-raised"
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-content-muted hover:text-content">
-        {t('lobby.settingsHost')}
+        {open ? t('lobby.settingsHide') : t('lobby.settingsHost')}
       </summary>
 
       <div className="flex flex-col gap-5 px-4 pb-4">

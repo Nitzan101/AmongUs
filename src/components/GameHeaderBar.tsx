@@ -37,13 +37,14 @@ export function GameHeaderBar({
 
   return (
     <div className="mb-3 rounded-xl border border-line bg-surface-raised px-3 py-2">
-      {/* The set gives the game its name, so it leads — the words everyone is
-          playing with are more of an identity than the PIN, which is only
-          there for anyone still arriving. */}
+      {/* The set names the game, so it is the title — full size, and centred.
+          Left-aligned it drifted to whichever edge the language dictated and
+          read as a caption sitting next to the PIN; a title belongs in the
+          middle whichever way the words run. */}
       {wordSetName && (
         <div
           dir="auto"
-          className="truncate text-base font-black leading-tight text-content"
+          className="truncate pb-1 text-center text-2xl font-black leading-tight text-content"
           title={wordSetName}
         >
           {wordSetName}
@@ -56,10 +57,13 @@ export function GameHeaderBar({
         </span>
         <span
           className={
-            'tracking-[0.15em] text-brand-600 ' +
-            // Without a set name this line is the header, so it carries the
-            // weight itself.
-            (wordSetName ? 'text-sm font-bold' : 'font-black')
+            'tracking-[0.15em] ' +
+            // Beneath a title this is a footnote for whoever is still
+            // arriving, so it gives up both its size and its colour. On its
+            // own it is the header, and carries the weight itself.
+            (wordSetName
+              ? 'text-xs font-bold text-content-muted'
+              : 'font-black text-brand-600')
           }
         >
           {pin}

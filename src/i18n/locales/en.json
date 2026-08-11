@@ -161,6 +161,7 @@
     "copied": "Copied",
     "settings": "Game settings",
     "settingsHost": "Game settings — tap to change",
+    "settingsHide": "Game settings — tap to hide",
     "settingsHint": "Set these while everyone joins. They lock once the game starts, and unlock again between games.",
     "justChanged": "just changed",
     "editIdentity": "Your name and character",
