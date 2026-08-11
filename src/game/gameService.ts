@@ -973,7 +973,20 @@ async function finalizeGame(
   const snap = await getDoc(gameRef(pin))
   const game = snap.data() as Game
   const round = game.round!
-  const playerIds = game.seatOrder ?? round.aliveIds
+  // Score the people who actually played this game, which is the round's own
+  // turn order — not the seating.
+  //
+  // `seatOrder` is written when the game is dealt and never shrinks, so it
+  // still lists anyone who has since left. Scoring from it paid crew points to
+  // someone who walked out and came back as a spectator: they were never in
+  // this round, but the seating still remembered them. `turnOrder` is trimmed
+  // when a player leaves and never includes a mid-game joiner, so it is the
+  // honest list of who was dealt in and is still here. Eliminated players stay
+  // in it, which is right — being voted out is not the same as leaving.
+  const playerIds =
+    round.turnOrder.length > 0
+      ? round.turnOrder
+      : (game.seatOrder ?? round.aliveIds)
   const imposterId =
     imposterIdOverride ??
     (outcome === 'crew-wins'

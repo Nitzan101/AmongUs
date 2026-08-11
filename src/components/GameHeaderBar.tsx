@@ -36,34 +36,48 @@ export function GameHeaderBar({
   }
 
   return (
-    <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2">
-      <span className="text-[10px] font-bold uppercase tracking-wide text-content-muted">
-        {t('lobby.pinLabel')}
-      </span>
-      <span className="font-black tracking-[0.15em] text-brand-600">{pin}</span>
-
+    <div className="mb-3 rounded-xl border border-line bg-surface-raised px-3 py-2">
+      {/* The set gives the game its name, so it leads — the words everyone is
+          playing with are more of an identity than the PIN, which is only
+          there for anyone still arriving. */}
       {wordSetName && (
-        <span
+        <div
           dir="auto"
-          className="ms-1 min-w-0 flex-1 truncate text-xs text-content-muted"
+          className="truncate text-base font-black leading-tight text-content"
           title={wordSetName}
         >
-          · {wordSetName}
-        </span>
+          {wordSetName}
+        </div>
       )}
 
-      <button
-        type="button"
-        onClick={copyLink}
-        className={
-          'ms-auto shrink-0 rounded-full px-2 py-1 text-xs font-bold ' +
-          (copied
-            ? 'text-brand-600'
-            : 'text-content-muted hover:bg-brand-500/10 hover:text-brand-600')
-        }
-      >
-        {copied ? `✓ ${t('lobby.copied')}` : `🔗 ${t('lobby.shareLink')}`}
-      </button>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wide text-content-muted">
+          {t('lobby.pinLabel')}
+        </span>
+        <span
+          className={
+            'tracking-[0.15em] text-brand-600 ' +
+            // Without a set name this line is the header, so it carries the
+            // weight itself.
+            (wordSetName ? 'text-sm font-bold' : 'font-black')
+          }
+        >
+          {pin}
+        </span>
+
+        <button
+          type="button"
+          onClick={copyLink}
+          className={
+            'ms-auto shrink-0 rounded-full px-2 py-1 text-xs font-bold ' +
+            (copied
+              ? 'text-brand-600'
+              : 'text-content-muted hover:bg-brand-500/10 hover:text-brand-600')
+          }
+        >
+          {copied ? `✓ ${t('lobby.copied')}` : `🔗 ${t('lobby.shareLink')}`}
+        </button>
+      </div>
     </div>
   )
 }
