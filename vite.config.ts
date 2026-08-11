@@ -1,9 +1,26 @@
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+/**
+ * The commit this bundle was built from, shown in the app.
+ *
+ * Without it there is no way to tell a bug that isn't fixed from a phone still
+ * running last week's cached code — a distinction that cost several rounds of
+ * chasing a fix that was already deployed and working.
+ */
+function buildId(): string {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'dev'
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(buildId()) },
   plugins: [
     react(),
     VitePWA({

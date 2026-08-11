@@ -146,6 +146,13 @@ export function HomePage() {
           </Button>
         </div>
       )}
+
+      {/* Which build this device is actually running. Small, but it settles
+          the question a screenshot can't: is this a bug, or a phone still
+          serving cached code from before the fix? */}
+      <p className="mt-4 text-center text-[10px] text-content-muted/60">
+        {__BUILD_ID__}
+      </p>
     </div>
   )
 }
