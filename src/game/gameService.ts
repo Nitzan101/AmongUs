@@ -357,8 +357,17 @@ export function subscribePlayers(
 /** Remove a player from the game (host action). */
 export async function kickPlayer(pin: string, playerId: string): Promise<void> {
   requireDb()
+  // Same rule as leaving: removing the imposter ends the game. The host may
+  // read anyone's secret, so this works from here.
+  if (await isImposter(pin, playerId)) {
+    await endBecauseImposterLeft(pin, playerId).catch((e) =>
+      console.error('ending on imposter kick failed', e),
+    )
+  }
   await deleteDoc(playerRef(pin, playerId))
-  await removeFromRound(pin, playerId)
+  await removeFromRound(pin, playerId).catch((e) => {
+    console.error('round cleanup on kick failed', e)
+  })
 }
 
 /**
@@ -372,6 +381,16 @@ export async function leaveGame(
   newHostId?: string,
 ): Promise<void> {
   requireDb()
+
+  // Before anything else: if the imposter is the one walking, the game is
+  // over — there is nobody left to catch. Done here, while we are still a
+  // player, because that is the only moment we may both read our own card and
+  // write the round.
+  if (await isImposter(pin, uid)) {
+    await endBecauseImposterLeft(pin, uid).catch((e) =>
+      console.error('ending on imposter leave failed', e),
+    )
+  }
 
   // Cleanup FIRST, while we still have the right to do it: the rules only let
   // a current player (or the host) touch the round, so deleting ourselves and
@@ -470,6 +489,41 @@ async function removeFromRound(pin: string, uid: string): Promise<void> {
   // player's score, which the rules only allow the host to do — a departing
   // player attempting it would just be denied. The host's device watches for
   // the final two instead (see `endIfTooFewAlive`).
+}
+
+/**
+ * End the game because the imposter has gone — crew win, at any player count.
+ *
+ * Called by whoever is leaving, *before* they remove themselves, and by the
+ * host when kicking. That timing is the point: a player may read their own
+ * secret and may write the round, so at that moment they can both know they
+ * are the imposter and act on it. A second later, with their player document
+ * gone, they could do neither.
+ *
+ * This replaces trying to work it out from the outside. The watchers on other
+ * devices call `findImposter`, which reads *everyone's* secrets — something
+ * only the host is allowed to do, so on every other device it threw and the
+ * whole check quietly died. The person leaving never had that problem: they
+ * only ever needed to look at their own card.
+ */
+export async function endBecauseImposterLeft(
+  pin: string,
+  imposterId: string,
+): Promise<void> {
+  requireDb()
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) return
+  const game = snap.data() as Game
+  const round = game.round
+  if (game.status !== 'playing' || !round) return
+  if (round.phase === 'recap' || round.phase === 'result') return
+  await finalizeGame(pin, 'crew-wins', false, imposterId)
+}
+
+/** True when this player holds the imposter's card. Reads only their own. */
+async function isImposter(pin: string, uid: string): Promise<boolean> {
+  const snap = await getDoc(secretRef(pin, uid)).catch(() => null)
+  return Boolean(snap?.exists() && (snap.data() as Secret).role === 'imposter')
 }
 
 /**
@@ -926,8 +980,15 @@ async function finalizeGame(
       ? (round.eliminatedId ?? '')
       : ((await findImposter(pin, round.aliveIds)) ?? ''))
   const crewId = playerIds.find((id) => id !== imposterId) ?? playerIds[0]
-  const crewSecret = await getDoc(secretRef(pin, crewId))
-  const mainWord = crewSecret.exists() ? (crewSecret.data() as Secret).word : ''
+  // Reading someone else's secret is a host-only right, and this no longer
+  // runs only on the host: an imposter walking out ends the game from their
+  // own device. Losing the word for the reveal is a poor trade against the
+  // game never ending at all, so a refusal here costs the reveal, not the
+  // ending. The round keeps whatever it already had.
+  const crewSecret = await getDoc(secretRef(pin, crewId)).catch(() => null)
+  const mainWord = crewSecret?.exists()
+    ? (crewSecret.data() as Secret).word
+    : (round.mainWord ?? '')
 
   const scoreLines = computeScores({
     preset: game.scoring,
