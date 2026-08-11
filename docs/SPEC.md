@@ -180,20 +180,34 @@ Raised during Milestone 5. **Party-proofing pass (post-M5) resolved the critical
 - **In-game voice chat (host option, off by default):** a microphone button players can mute and
   unmute during the game, enabled by the host at game creation like the other options. Notes worth
   keeping before this is scoped:
-  - **Only meaningful in full-virtual mode.** In-person players are already talking in the room.
+  - **It belongs in *half*-virtual mode, not full.** An earlier note here had this backwards, on
+    the assumption that "in person" meant "in the same room". It doesn't — it means the clues are
+    *spoken rather than typed*, and that is precisely the mode a scattered group cannot play at
+    all today. Full-virtual already works from anywhere. So the microphone should be open for the
+    whole game, clues included, because in that mode the clues **are** the speech. The objection
+    that voice would undermine typed-clue enforcement also evaporates: half mode has no typed
+    clues to enforce.
   - **Free-plan reality:** WebRTC peer-to-peer works with Firestore for signalling and costs
     nothing, but a full mesh degrades past roughly 4–6 players — which is exactly this game's
     size, so it may just fit. Anything larger wants an SFU (Agora/LiveKit/Daily), which is paid
     and would be the first running cost the project has.
-  - **It collides with two existing rules.** §1 asks players to keep a straight face, and
-    full-virtual mode enforces clue order and duplicate blocking through typed input. Live voice
-    during the clue phase would undermine both. Suggested shape: keep clues typed, and open the
-    microphone only for the **discussion/voting phase** — where arguing is the whole point and the
-    game currently has no channel for it at all. That preserves the enforcement and adds the
-    social part where it belongs.
-  - **Practicalities:** microphone permission prompts on mobile browsers, echo when several
-    players sit in one room, battery drain, and a clear always-visible indicator of who is
-    currently unmuted.
+  - **Nothing in the rules conflicts.** §1's "keep a straight face" is about the room, not the
+    channel; hearing each other is what the mode already assumes. Half mode never knew who had
+    spoken — the host advances the phases by hand — and that stays true over voice, so the turn
+    display carries the order exactly as it does at a table.
+  - **Practicalities:** microphone permission prompts on mobile browsers, iOS Safari refusing to
+    play audio without a user gesture, phones suspending a backgrounded tab mid-game, battery
+    drain, and a clear always-visible indicator of who is currently unmuted.
+  - **What it competes with is the reason to think twice.** A scattered group playing a party
+    game is, in practice, already on a call — WhatsApp, FaceTime, Discord. Voice in the app has to
+    beat a call they have *already started*, which makes it a convenience feature rather than a
+    capability one, at the price of the most intricate code in the project (offer/answer and ICE
+    through Firestore, renegotiation as players join and leave, teardown on leave — a path this
+    codebase has repeatedly got wrong). And none of it can be verified from here: audio flowing
+    between two real devices is not something this environment can observe.
+  - **The cheap version of the same idea:** the mode's own description says "in person" and
+    "out loud", which reads as *same room* and quietly rules out the scattered case. Saying "in
+    the room or on a call" instead unlocks the use case immediately, for the price of a string.
 
 **Language vs. words (design decision):** the UI language (EN/HE toggle) and the word-content
 language are independent. Words are **never translated** — a dealt word is a fixed string shown
