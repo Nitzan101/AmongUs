@@ -346,6 +346,14 @@ export async function leaveGame(
   newHostId?: string,
 ): Promise<void> {
   requireDb()
+
+  // Cleanup FIRST, while we still have the right to do it. The rules only let
+  // a current player (or the host) touch the round, so deleting ourselves and
+  // then tidying up meant the tidy-up was silently denied: the leaver stayed
+  // in `aliveIds`, could still be voted for, and the round waited on a vote
+  // that was never coming.
+  await removeFromRound(pin, uid)
+
   await deleteDoc(playerRef(pin, uid))
   forgetGame()
 
@@ -366,7 +374,6 @@ export async function leaveGame(
         : remaining[0].id
     await promoteHost(pin, successor)
   }
-  await removeFromRound(pin, uid)
 }
 
 /**
@@ -428,18 +435,39 @@ async function removeFromRound(pin: string, uid: string): Promise<void> {
   // Their vote no longer counts toward "everyone voted".
   await deleteDoc(voteRef(pin, uid)).catch(() => {})
 
-  // People walking out can shrink the table to two just as an elimination
-  // can, and the same rule has to apply: with two left there is no majority
-  // to be had, so the game is over. Without this the round carried on with a
-  // pair of players voting at each other, and a tie simply started another.
-  const remaining = (updates['round.aliveIds'] as string[]) ?? round.aliveIds
-  const alreadyOver = round.phase === 'recap' || round.phase === 'result'
-  if (!alreadyOver && remaining.length <= 2) {
-    // If the imposter is one of the ones who walked, the crew have it by
-    // default — there is nobody left to catch.
-    const imposterStillIn = await findImposter(pin, remaining)
-    await finalizeGame(pin, imposterStillIn ? 'imposter-wins' : 'crew-wins', false)
-  }
+  // Ending the game is deliberately NOT done here. Finalising writes every
+  // player's score, which the rules only allow the host to do — a departing
+  // player attempting it would just be denied. The host's device watches for
+  // the final two instead (see `endIfTooFewAlive`).
+}
+
+/**
+ * End the game when the table has shrunk to two — **host only**.
+ *
+ * People walking out can reach the final two just as an elimination can, and
+ * the same rule applies: with two left there is no majority to be had. Without
+ * this the round carried on with a pair voting at each other, and a tie simply
+ * started another one.
+ *
+ * The host drives it for the same reason they drive the reveal: finalising
+ * writes everyone's scores, which only the host may do. Safe to call on every
+ * change — it returns immediately unless the game is live and actually down to
+ * two.
+ */
+export async function endIfTooFewAlive(pin: string): Promise<void> {
+  requireDb()
+  const snap = await getDoc(gameRef(pin))
+  if (!snap.exists()) return
+  const game = snap.data() as Game
+  const round = game.round
+  if (game.status !== 'playing' || !round) return
+  if (round.phase === 'recap' || round.phase === 'result') return
+  if (round.aliveIds.length > 2) return
+
+  // If the imposter is one of the ones who walked, the crew have it by
+  // default — there is nobody left to catch.
+  const imposterStillIn = await findImposter(pin, round.aliveIds)
+  await finalizeGame(pin, imposterStillIn ? 'imposter-wins' : 'crew-wins', false)
 }
 
 /**

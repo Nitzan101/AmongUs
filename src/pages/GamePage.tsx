@@ -19,6 +19,7 @@ import {
   resolveGuessReview,
   resolveVote,
   skipGuess,
+  endIfTooFewAlive,
   revealVotes,
   startGame,
   submitClue,
@@ -1199,6 +1200,16 @@ export function GamePage() {
       recordedRef.current = null
     })
   }, [isGuest, user, game, round, pin])
+
+  // The host also ends the game once the table is down to two — people
+  // leaving can reach the final two just as an elimination can. Only the host
+  // may write everyone's scores, so it can't be the departing player.
+  useEffect(() => {
+    if (!isHost || !round) return
+    if (round.phase === 'recap' || round.phase === 'result') return
+    if (round.aliveIds.length > 2) return
+    endIfTooFewAlive(pin)
+  }, [isHost, round?.aliveIds.length, round?.phase, round, pin])
 
   // The host drives the reveal once everyone has voted.
   useEffect(() => {
