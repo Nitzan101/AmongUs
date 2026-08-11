@@ -292,6 +292,32 @@ export async function joinGame(
   }
   await setDoc(playerRef(pin, uid), player)
   rememberGame(pin)
+
+  // Coming back is coming back as somebody new.
+  //
+  // Leaving is meant to be final, but the round can still be carrying this
+  // uid — either from a game they were dealt into before walking, or because
+  // their cleanup never landed. Left there, the app treats them as a player
+  // who never went away: holding a seat, votable, expected to speak. Clearing
+  // it makes them a spectator on zero points who is dealt into the next game,
+  // which is what leaving and returning should mean.
+  const gameNow = snap.data() as Game
+  const round = gameNow.round
+  if (gameNow.status === 'playing' && round) {
+    const stale =
+      round.aliveIds.includes(uid) ||
+      round.turnOrder.includes(uid) ||
+      Boolean(round.candidates?.includes(uid))
+    if (stale) {
+      await updateDoc(gameRef(pin), {
+        'round.aliveIds': round.aliveIds.filter((id) => id !== uid),
+        'round.turnOrder': round.turnOrder.filter((id) => id !== uid),
+        ...(round.candidates
+          ? { 'round.candidates': round.candidates.filter((id) => id !== uid) }
+          : {}),
+      })
+    }
+  }
 }
 
 /** Update this player's "still here" timestamp. Silently ignored if they've left. */
@@ -467,6 +493,28 @@ export async function endIfTooFewAlive(pin: string): Promise<void> {
   // then had nothing coherent to continue and left the button dead.
   if (round.phase !== 'clues' && round.phase !== 'voting') return
 
+  // Trust the player list, not `aliveIds`.
+  //
+  // `aliveIds` is maintained by whoever leaves, and that write can simply not
+  // happen — a closed tab, a dropped connection, a rule that refused it. When
+  // it didn't, the round went on believing four people were playing while two
+  // were in the room, and nothing ever ended. Recomputing from the players who
+  // actually still exist makes this self-correcting: it no longer matters why
+  // the earlier cleanup was missed.
+  const playersSnap = await getDocs(playersRef(pin))
+  const present = new Set(playersSnap.docs.map((d) => d.id))
+  const trulyAlive = round.aliveIds.filter((id) => present.has(id))
+
+  if (trulyAlive.length !== round.aliveIds.length) {
+    await updateDoc(gameRef(pin), {
+      'round.aliveIds': trulyAlive,
+      'round.turnOrder': round.turnOrder.filter((id) => present.has(id)),
+      ...(round.candidates
+        ? { 'round.candidates': round.candidates.filter((id) => present.has(id)) }
+        : {}),
+    })
+  }
+
   // Two conditions end a game early, and both come from people leaving rather
   // than being caught:
   //
@@ -475,7 +523,7 @@ export async function endIfTooFewAlive(pin: string): Promise<void> {
   //    imposter in it at all, which nobody can ever win.
   //  * Only two are left. No majority is possible, so the imposter takes it,
   //    exactly as when an elimination reaches the final two.
-  const imposterStillIn = await findImposter(pin, round.aliveIds)
+  const imposterStillIn = await findImposter(pin, trulyAlive)
   if (!imposterStillIn) {
     // Say who it *was*. Scoring needs a real imposter id, and the usual source
     // — the player just eliminated — is empty here, because nobody was
@@ -485,7 +533,7 @@ export async function endIfTooFewAlive(pin: string): Promise<void> {
     await finalizeGame(pin, 'crew-wins', false, departed ?? undefined)
     return
   }
-  if (round.aliveIds.length <= 2) {
+  if (trulyAlive.length <= 2) {
     await finalizeGame(pin, 'imposter-wins', false)
   }
 }
