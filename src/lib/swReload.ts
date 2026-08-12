@@ -10,8 +10,39 @@
  * missing on a phone while being present in the deployed bundle.
  *
  * `controllerchange` fires exactly when the new worker claims this page, which
- * is the right moment to pick up the new assets.
+ * is the right moment to pick up the new assets — unless somebody is in the
+ * middle of a game. See `holdAppReload`.
  */
+
+/** Live holds. While there is at least one, a reload waits. */
+let holds = 0
+/** A deploy landed while held, and is owed as soon as the last hold goes. */
+let owed = false
+
+/**
+ * Ask for reloads to wait, and get back the release.
+ *
+ * A deploy reloading every phone at once is fine on the home screen and awful
+ * mid-round: the reveal you were watching disappears, the card you were
+ * holding is dealt again from the server, and everyone at the table blames the
+ * game. The new version is worth having, just not this second — so the game
+ * screen holds the reload for as long as it is on screen, and the moment it
+ * isn't, the deploy lands.
+ */
+export function holdAppReload(): () => void {
+  holds++
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    holds--
+    if (holds === 0 && owed) {
+      owed = false
+      window.location.reload()
+    }
+  }
+}
+
 export function reloadOnServiceWorkerUpdate(): void {
   if (!('serviceWorker' in navigator)) return
 
@@ -24,6 +55,10 @@ export function reloadOnServiceWorkerUpdate(): void {
     // The guard matters: without it a worker that keeps claiming would put
     // the page in a reload loop.
     if (reloading) return
+    if (holds > 0) {
+      owed = true
+      return
+    }
     reloading = true
     window.location.reload()
   })

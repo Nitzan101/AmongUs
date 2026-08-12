@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { shareLink } from '../lib/share'
 
 /**
  * The PIN, a share link, and which word set is in play — kept on screen for
@@ -23,16 +24,14 @@ export function GameHeaderBar({
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
 
-  async function copyLink() {
+  async function share() {
     const link = `${window.location.origin}/join/${pin}`
-    try {
-      await navigator.clipboard.writeText(link)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Clipboard can be unavailable; the PIN beside it still works.
-      window.prompt(t('lobby.shareLink'), link)
-    }
+    // On a phone this opens the share sheet, which is how the latecomer is
+    // actually going to be sent the link; copying is the desktop answer.
+    const result = await shareLink(link, t('lobby.shareInvite'))
+    if (result !== 'copied') return
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }
 
   return (
@@ -71,7 +70,7 @@ export function GameHeaderBar({
 
         <button
           type="button"
-          onClick={copyLink}
+          onClick={share}
           className={
             'ms-auto shrink-0 rounded-full px-2 py-1 text-xs font-bold ' +
             (copied

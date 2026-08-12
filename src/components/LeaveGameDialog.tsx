@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from './ui/Button'
 import { OptionCard } from './ui/Card'
+import { Dialog } from './ui/Dialog'
 import type { WordSetHandover } from '../game/gameService'
 import type { Player } from '../game/types'
 import { DEFAULT_SET_ICON, type WordSet } from '../game/wordSets'
@@ -51,16 +52,10 @@ export function LeaveGameDialog({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-xl">
-        <h2 className="text-xl font-black text-content">
-          {t('leave.title')}
-        </h2>
-
+    // Escape and a tap outside cancel: staying in the room is the harmless
+    // answer, and every other button here is one you can't take back.
+    <Dialog title={t('leave.title')} onDismiss={onCancel}>
+      <>
         {!isHost || others.length === 0 ? (
           <>
             <p className="mt-1 text-sm text-content-muted">
@@ -169,7 +164,7 @@ export function LeaveGameDialog({
             </div>
           </>
         )}
-      </div>
-    </div>
+      </>
+    </Dialog>
   )
 }

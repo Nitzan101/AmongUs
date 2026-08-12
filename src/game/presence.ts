@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Timestamp } from 'firebase/firestore'
 import { promoteHost, touchPresence } from './gameService'
 import type { Game, Player } from './types'
@@ -56,9 +56,22 @@ export function usePresence(
     }
   }, [pin, uid])
 
+  // Read at tick time, not depended on.
+  //
+  // This is what made the whole mechanism dead code. `game` and `players` are
+  // fresh objects out of every Firestore snapshot, and with a heartbeat per
+  // player every eight seconds the snapshots never stop — so the effect tore
+  // the interval down and built a new one long before its ten seconds were up.
+  // The timer that takes over from a vanished host had, in practice, never
+  // fired once.
+  const latest = useRef({ game, players })
+  latest.current = { game, players }
+
   useEffect(() => {
-    if (!pin || !uid || !game) return
+    if (!pin || !uid) return
     const id = setInterval(() => {
+      const { game, players } = latest.current
+      if (!game) return
       const now = Date.now()
       const host = players.find((p) => p.id === game.hostId)
       const hostStale = !host || isStale(host.lastSeen, now, HOST_STALE_AFTER_MS)
@@ -75,5 +88,5 @@ export function usePresence(
       }
     }, 10000)
     return () => clearInterval(id)
-  }, [pin, uid, game, players])
+  }, [pin, uid])
 }

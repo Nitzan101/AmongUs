@@ -4,6 +4,7 @@
     "back": "Back",
     "next": "Next",
     "cancel": "Cancel",
+    "ok": "OK",
     "save": "Save",
     "language": "Language",
     "english": "English",
@@ -28,6 +29,7 @@
     "wordsRandomDesc": "The built-in word bank.",
     "wordsLentDesc": "Left for this room by the previous host.",
     "wordsOrphaned": "This room is set to a word set belonging to a host who has left. Pick one above to change it — you won't be able to switch back.",
+    "wordsTooSmall": "Your set now has fewer than {{count}} pairs, so games deal from the built-in bank instead. Add words to it, or pick another above.",
     "wordLanguage": "Language of the secret words",
     "difficulty": "Difficulty for the imposter",
     "difficultyEasy": "Easy",
@@ -85,6 +87,9 @@
     "blankHint": "💡 Leave a confusing word blank and the imposter gets another word from this set — still on theme.",
     "wordCount": "{{count}} words",
     "needMore": "Add at least {{count}} words to use this set.",
+    "duplicateWord": "The same word appears twice. Each main word can only be in the set once.",
+    "sameWordTwice": "A pair can't be the same word twice — the imposter would be handed the crew's word.",
+    "tooMany": "A set can hold at most {{count}} pairs. Remove a few to save.",
     "save": "Save set",
     "saving": "Saving…",
     "saveError": "Could not save the set. Please try again.",
@@ -124,6 +129,7 @@
     "defaultCharacter": "Default character",
     "save": "Save",
     "saved": "Saved",
+    "saveError": "Couldn't save that. Check your connection and try again.",
     "needAccountTitle": "Sign in first",
     "needAccountBody": "Profiles are saved to your account. Guests pick a name each game."
   },
@@ -146,7 +152,8 @@
       "nameTaken": "That nickname is taken — pick another.",
       "emptyName": "Pick a nickname first.",
       "notConfigured": "Not connected yet. (Firebase setup in progress.)",
-      "generic": "Could not join. Please try again."
+      "generic": "Could not join. Please try again.",
+      "full": "This room is full — {{count}} players is the most it holds."
     },
     "inProgress": "A game is in progress. You can join now and play the next one."
   },
@@ -158,6 +165,7 @@
     "starting": "The game is starting!",
     "pinLabel": "Game PIN",
     "shareLink": "Share link",
+    "shareInvite": "Join my Imposter game",
     "copied": "Copied",
     "settings": "Game settings",
     "settingsHost": "Game settings — tap to change",
@@ -171,6 +179,7 @@
     "host": "HOST",
     "kick": "Remove player",
     "needMore": "Need at least {{count}} players to start.",
+    "roomFull": "The room is full at {{count}} players. Someone has to leave before anyone else can join.",
     "startGame": "Start game",
     "hostNote": "The host starts the game once everyone is in.",
     "leave": "Leave game",
@@ -209,6 +218,8 @@
       "not-your-turn": "It's not your turn yet.",
       "already-submitted": "You already sent a word this round.",
       "empty-word": "Type a word first.",
+      "game-not-found": "That game has gone — the host may have closed the room.",
+      "no-round": "No round is running just now.",
       "generic": "Couldn't send that word. Try again."
     },
     "finishToVote": "Everyone's spoken → Vote",
@@ -251,6 +262,7 @@
     "guessReviewCorrect": "Correct",
     "guessReviewWrong": "Wrong",
     "scoreboard": "Scoreboard",
+    "leading": "Leading right now",
     "theWordWas": "The word was",
     "guessRight": "The imposter guessed \"{{guess}}\" — correct!",
     "guessWrong": "The imposter guessed \"{{guess}}\" — wrong.",
@@ -273,7 +285,8 @@
     "startsWith": "Starts",
     "waitingNextTitle": "You're in for the next game",
     "waitingNextBody": "This game started before you joined, so sit back and watch. You'll be dealt in when the next one begins.",
-    "guestNudge": "Playing as a guest — these scores and badges are not being saved. Make an account once you're done here, and your games will start counting."
+    "guestNudge": "Playing as a guest — these scores and badges are not being saved. Make an account once you're done here, and your games will start counting.",
+    "playerLeft": "{{name}} left the game"
   },
   "rules": {
     "title": "How to play",
@@ -385,14 +398,126 @@
     "imposterWins": "Imposter wins",
     "hosted": "Games hosted",
     "badges": "Badges",
-    "badgeNames": {
-      "firstGame": "Played your first game",
-      "played10": "Played 10 games",
-      "won5": "Won 5 games",
-      "hosted3": "Hosted 3 games",
-      "imposter5": "Been the imposter 5 times",
-      "imposterWins3": "Won 3 games as the imposter",
-      "oneYear": "Playing for a year"
+    "pickHint": "Tap any badge you've earned to show it beside your name in a game.",
+    "tierNames": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum"
+    },
+    "groups": {
+      "playing": {
+        "name": "Playing",
+        "hint": "Turning up, and the luck of the draw. These stop at silver."
+      },
+      "skill": {
+        "name": "Skill",
+        "hint": "Gold and platinum need a run of games, not a bigger pile."
+      },
+      "feats": {
+        "name": "Feats",
+        "hint": "Rare moments — the hardest badges in the game."
+      }
+    },
+    "tracks": {
+      "fraction": "{{value}} / {{next}}",
+      "fractionStreak": "{{value}} / {{next}} in a row",
+      "maxed": "Complete",
+      "played": {
+        "name": "Played",
+        "desc": "Games you've finished."
+      },
+      "hosted": {
+        "name": "Hosted",
+        "desc": "Games you ran as host."
+      },
+      "imposter": {
+        "name": "Imposter",
+        "desc": "Times you were dealt the imposter card."
+      },
+      "imposterRounds": {
+        "name": "Kept Cover",
+        "desc": "Rounds you held the imposter card and the vote went elsewhere."
+      },
+      "loyalty": {
+        "name": "Loyalty",
+        "desc": "How long you've been playing."
+      },
+      "explorer": {
+        "name": "Explorer",
+        "desc": "Different modes, scoring presets and guess rules you've played."
+      },
+      "homemade": {
+        "name": "Homemade",
+        "desc": "Games dealt from somebody's custom word set."
+      },
+      "fullHouse": {
+        "name": "Full House",
+        "desc": "Games at a table of eight or more."
+      },
+      "innocent": {
+        "name": "Innocent",
+        "desc": "Games played without ever being the imposter. Lost the moment you are."
+      },
+      "marked": {
+        "name": "Marked",
+        "desc": "You get the imposter card far more often than your share."
+      },
+      "wins": {
+        "name": "Wins",
+        "desc": "Games your side won — crew or imposter."
+      },
+      "imposterWins": {
+        "name": "Imposter Wins",
+        "desc": "Games you won holding the imposter card. A run counts only the games you were the imposter."
+      },
+      "survivor": {
+        "name": "Survivor",
+        "desc": "Games you were still alive in at the end."
+      },
+      "detective": {
+        "name": "Detective",
+        "desc": "Games where you voted for the real imposter."
+      },
+      "instantRead": {
+        "name": "Instant Read",
+        "desc": "Games where the crew caught the imposter on the very first vote."
+      },
+      "cleanSweep": {
+        "name": "Clean Sweep",
+        "desc": "Games decided by a unanimous vote."
+      },
+      "houdini": {
+        "name": "Houdini",
+        "desc": "Games where people voted for you and you survived to the end anyway."
+      },
+      "invisible": {
+        "name": "Invisible",
+        "desc": "Games where nobody voted for you at all."
+      },
+      "lastLaugh": {
+        "name": "Last Laugh",
+        "desc": "Caught as the imposter — and you still guessed the word."
+      },
+      "bestGame": {
+        "name": "Best Game",
+        "desc": "Most points you've scored in a single game."
+      },
+      "marathon": {
+        "name": "Marathon",
+        "desc": "The longest game you've played, in rounds."
+      }
+    },
+    "collection": {
+      "count": "{{have}} / {{total}}",
+      "hint": "Badge levels earned across every track"
     }
+  },
+  "badgeEarned": {
+    "titleOne": "Badge earned!",
+    "titleMany": "{{count}} badges earned!",
+    "subtitle": "Want to show it beside your name?",
+    "setActive": "Show this one",
+    "showing": "Showing"
   }
 }

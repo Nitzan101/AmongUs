@@ -4,13 +4,45 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 import { ProfileIcon, WordSetsIcon } from '../components/NavIcons'
 import { useAuth } from '../auth/AuthContext'
-import { findMyActiveGame, hasRememberedGame } from '../game/gameService'
+import {
+  findMyActiveGame,
+  hasRememberedGame,
+  leaveGame,
+} from '../game/gameService'
 
 export function HomePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { user, isGuest, signOut, loading } = useAuth()
   const [resuming, setResuming] = useState(hasRememberedGame)
+  const [signingOut, setSigningOut] = useState(false)
+
+  /**
+   * Leave any room on the way out.
+   *
+   * Signing out doesn't end the session so much as swap it for a different
+   * one, and the player document stays exactly where it was — holding a seat,
+   * votable, and eligible to be dealt the imposter card next game. An imposter
+   * nobody in the room can catch, that only the host can remove. Leaving first
+   * hands on hosting and tidies the round, the same as the Leave button.
+   *
+   * Reachable when the resume check didn't manage to bounce us into the room:
+   * a network hiccup on reload, or a second tab.
+   */
+  async function handleSignOut() {
+    setSigningOut(true)
+    try {
+      if (user) {
+        const active = await findMyActiveGame(user.uid)
+        if (active) await leaveGame(active.pin, user.uid)
+      }
+    } catch (e) {
+      // Never let tidying up trap someone in an account they want out of.
+      console.error('leaving the room before signing out failed', e)
+    }
+    await signOut().catch(() => {})
+    setSigningOut(false)
+  }
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || ''
 
@@ -123,7 +155,12 @@ export function HomePage() {
             </Button>
           </div>
 
-          <Button variant="ghost" fullWidth onClick={() => signOut()}>
+          <Button
+            variant="ghost"
+            fullWidth
+            disabled={signingOut}
+            onClick={handleSignOut}
+          >
             {t('auth.signOut')}
           </Button>
         </div>

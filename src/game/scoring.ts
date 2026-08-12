@@ -44,25 +44,55 @@ export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> 
   const n = playerIds.length
   const vMax = n - 2
   const crewWins = outcome === 'crew-wins'
-  const crewEliminated = n - aliveIds.length - (crewWins ? 1 : 0)
+  // Clamped, because it could go negative.
+  //
+  // A game that ends because the imposter *walked out* has nobody eliminated
+  // and everybody still alive, so this came out at −1. That cost twice: every
+  // crew member was paid one point too many (`vMax − (−1)`), and neither
+  // branch below fired, leaving the imposter's line with an empty `reasons`
+  // array — a recap row with a number and no explanation.
+  const crewEliminated = Math.max(0, n - aliveIds.length - (crewWins ? 1 : 0))
   const crewIds = playerIds.filter((id) => id !== imposterId)
 
   const lines: Record<string, ScoreLineItem> = {}
   playerIds.forEach((id) => (lines[id] = { delta: 0, reasons: [] }))
 
-  // Imposter's survival points.
-  if (crewEliminated > 0) {
-    lines[imposterId].delta += 2 * crewEliminated
-    lines[imposterId].reasons.push({
-      key: 'survivedVotes',
-      params: { count: crewEliminated },
-    })
+  /**
+   * The imposter's line — which is not simply `lines[imposterId]`.
+   *
+   * They may not be among the players being scored at all. `endIfTooFewAlive`
+   * trims the round to whoever is still present and *then* finalises naming
+   * the person who just left, so the id it passes is deliberately absent from
+   * that list. And when nobody can be identified — `findImposter` coming back
+   * empty because the secrets weren't readable — the id is the empty string.
+   * Both used to index straight into `lines` and throw a TypeError, which,
+   * from inside `finalizeGame`, meant the game never ended at all.
+   *
+   * So: give a known-but-absent imposter a line of their own (nothing renders
+   * it, but the breakdown stays honest), and score no imposter at all when
+   * there is no id to score.
+   */
+  let imposterLine: ScoreLineItem | null = null
+  if (imposterId) {
+    if (!(imposterId in lines)) lines[imposterId] = { delta: 0, reasons: [] }
+    imposterLine = lines[imposterId]
   }
-  if (!crewWins) {
-    lines[imposterId].delta += 2
-    lines[imposterId].reasons.push({ key: 'imposterEscaped' })
-  } else if (crewEliminated === 0) {
-    lines[imposterId].reasons.push({ key: 'caughtImmediately' })
+
+  if (imposterLine) {
+    // Imposter's survival points.
+    if (crewEliminated > 0) {
+      imposterLine.delta += 2 * crewEliminated
+      imposterLine.reasons.push({
+        key: 'survivedVotes',
+        params: { count: crewEliminated },
+      })
+    }
+    if (!crewWins) {
+      imposterLine.delta += 2
+      imposterLine.reasons.push({ key: 'imposterEscaped' })
+    } else if (crewEliminated === 0) {
+      imposterLine.reasons.push({ key: 'caughtImmediately' })
+    }
   }
 
   // Crew base points by preset.
@@ -106,17 +136,17 @@ export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> 
   }
 
   // Caught-imposter guess.
-  if (crewWins && guessRule !== 'off' && guessCorrect) {
+  if (crewWins && guessRule !== 'off' && guessCorrect && imposterLine) {
     if (guessRule === 'final') {
-      lines[imposterId].delta += 2
-      lines[imposterId].reasons.push({ key: 'guessBonus' })
+      imposterLine.delta += 2
+      imposterLine.reasons.push({ key: 'guessBonus' })
     } else if (guessRule === 'steal') {
       crewIds.forEach((id) => {
         lines[id].delta = 0
         lines[id].reasons = [{ key: 'guessStolen' }]
       })
-      lines[imposterId].delta += 3
-      lines[imposterId].reasons.push({ key: 'guessSteal' })
+      imposterLine.delta += 3
+      imposterLine.reasons.push({ key: 'guessSteal' })
     }
   }
 

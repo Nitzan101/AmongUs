@@ -151,3 +151,23 @@ button:not(:disabled) {
 .animate-ominous-shake {
   animation: ominous-shake 0.5s ease-in-out both;
 }
+
+/*
+  Honour the phone's "reduce motion" setting.
+
+  Every animation above is decoration — celebration and suspense — so standing
+  them down loses nothing. Each one also ends where the element belongs
+  (pop-in uses `both`, so its end state is simply the normal one), which is
+  why turning them off leaves the screen correct rather than half-faded.
+
+  The confetti isn't here: its animation is set inline on each piece, out of
+  reach of a stylesheet, so `RecapPhase` skips rendering it instead.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-suspense-pulse,
+  .animate-pop-in,
+  .animate-ominous-shake,
+  .animate-pulse {
+    animation: none;
+  }
+}

@@ -28,14 +28,15 @@ export function GameSettingsPanel({
   game,
   isHost,
   uid,
-  usableSets,
+  mySets,
   loanedSet,
 }: {
   pin: string
   game: Game
   isHost: boolean
   uid: string
-  usableSets: WordSet[]
+  /** Every set this host owns, including any too small to deal from. */
+  mySets: WordSet[]
   /**
    * A set left behind by a host who lent it on their way out. Listed beside the
    * host's own, because it isn't in their account and would otherwise be
@@ -90,6 +91,9 @@ export function GameSettingsPanel({
     })
   }
 
+  const usableSets = mySets.filter(
+    (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
+  )
   const usingCustomSet = Boolean(game.wordSetId)
   const visibleSpecs = OPTION_SPECS.filter(
     (spec) =>
@@ -199,15 +203,19 @@ export function GameSettingsPanel({
               {t('create.noUsableSets', { count: MIN_SET_ENTRIES })}
             </p>
           )}
-          {/* Nothing above is selected, yet the room is set to a custom set:
-              a host vanished without handing it over (a closed tab rather
-              than Leave). Say so, rather than showing a Words list where the
-              choice is mysteriously nobody's. */}
+          {/* Nothing above is selected, yet the room is set to a custom set.
+              Two very different reasons, and saying the wrong one is worse
+              than saying nothing: the set may belong to a host who vanished
+              without handing it over (a closed tab rather than Leave), or it
+              may be your own, sitting right there in your list, and simply
+              too small to deal from since you last edited it. */}
           {usingCustomSet &&
             game.wordSetId !== loanedSet?.id &&
             !usableSets.some((s) => s.id === game.wordSetId) && (
               <p className="px-1 text-xs text-content-muted">
-                {t('create.wordsOrphaned')}
+                {mySets.some((s) => s.id === game.wordSetId)
+                  ? t('create.wordsTooSmall', { count: MIN_SET_ENTRIES })
+                  : t('create.wordsOrphaned')}
               </p>
             )}
         </section>

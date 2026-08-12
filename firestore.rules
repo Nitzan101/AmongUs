@@ -104,6 +104,37 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isHostOf(pin);
       }
+
+      // A nickname claim, whose document *id is the name*.
+      //
+      // This is what makes "is this name free?" a single atomic step. Reading
+      // the player list and then writing loses the race — two people typing
+      // "Ben" at the same moment both read an empty list and both write. Here
+      // the second one is writing to a document that already exists, and the
+      // create below simply does not apply to it.
+      match /names/{nameKey} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          // Pins the claim's age to the server's clock, so nobody can date one
+          // into the future to make it permanently un-reclaimable.
+          && request.resource.data.claimedAt == request.time;
+        // Renewing your own claim, or taking over one whose holder is no
+        // longer in the room. The minute's grace protects the gap between
+        // claiming a name and creating the player document, during which an
+        // honest claimant looks exactly like an absent one.
+        allow update: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.claimedAt == request.time
+          && (
+            resource.data.uid == request.auth.uid
+            || (!exists(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.uid))
+                && resource.data.claimedAt < request.time - duration.value(60, 's'))
+          );
+        // Your own name back, or the host clearing up after somebody.
+        allow delete: if signedIn()
+          && (resource.data.uid == request.auth.uid || isHostOf(pin));
+      }
     }
 
     // Your saved defaults are yours alone.

@@ -18,12 +18,70 @@ import {
 
 const BLANK_ROWS = 5
 
+/**
+ * The most pairs one set can hold.
+ *
+ * A Firestore document is capped at 1MB, and nothing stood between a pasted
+ * spreadsheet and that ceiling — the save simply failed, and the only thing
+ * the editor could say was "couldn't save", with no hint that the size was the
+ * problem. Two hundred pairs is far more than a party will get through and
+ * nowhere near the limit.
+ */
+const MAX_SET_ENTRIES = 200
+
 function emptyRows(n: number): WordSetEntry[] {
   return Array.from({ length: n }, () => ({ main: '', confusing: '' }))
 }
 
 const inputClass =
   'w-full rounded-xl border-2 border-line bg-surface-raised px-3 py-2 text-content outline-none focus:border-brand-500'
+
+/** The offending rows, marked in red and bold so the problem is where you are. */
+const badInputClass =
+  'w-full rounded-xl border-2 border-accent-500 bg-accent-500/5 px-3 py-2 font-bold text-content outline-none focus:border-accent-600'
+
+/** Same comparison the game uses when it refuses a clue already said. */
+function key(word: string | undefined): string {
+  return (word ?? '').trim().toLowerCase()
+}
+
+/**
+ * Which rows are wrong, and why.
+ *
+ * Two ways to break a set, both of which produce a game that doesn't work:
+ *
+ *  * **The same main word twice.** The set is a bag the game draws one entry
+ *    from, so a duplicate is either a mistake or a way to weight the draw —
+ *    and if the two rows carry different confusing words, which one you get is
+ *    a coin toss the author never intended.
+ *  * **A row whose two words are identical.** The imposter would be handed the
+ *    crew's word, so nobody is the odd one out and the round has no answer.
+ */
+function findBadRows(rows: WordSetEntry[]): {
+  duplicate: Set<number>
+  identical: Set<number>
+} {
+  const seen = new Map<string, number>()
+  const duplicate = new Set<number>()
+  const identical = new Set<number>()
+
+  rows.forEach((row, i) => {
+    const main = key(row.main)
+    if (!main) return
+    if (main === key(row.confusing)) identical.add(i)
+    const first = seen.get(main)
+    if (first === undefined) {
+      seen.set(main, i)
+      return
+    }
+    // Both copies are marked — pointing only at the second says nothing about
+    // where the other one is.
+    duplicate.add(first)
+    duplicate.add(i)
+  })
+
+  return { duplicate, identical }
+}
 
 /**
  * A comparable fingerprint of the form's meaningful content.
@@ -100,9 +158,13 @@ export function WordSetEditPage() {
   function updateRow(index: number, patch: Partial<WordSetEntry>) {
     setRows((prev) => {
       const next = prev.map((r, i) => (i === index ? { ...r, ...patch } : r))
-      // Always keep a spare blank row at the end so the list grows as you type.
+      // Always keep a spare blank row at the end so the list grows as you type
+      // — but stop growing at the cap, so the list can't run away.
       const last = next[next.length - 1]
-      if (last.main.trim() || last.confusing?.trim()) {
+      if (
+        (last.main.trim() || last.confusing?.trim()) &&
+        next.length < MAX_SET_ENTRIES + 1
+      ) {
         next.push({ main: '', confusing: '' })
       }
       return next
@@ -110,7 +172,14 @@ export function WordSetEditPage() {
   }
 
   const filled = cleanEntries(rows)
-  const canSave = name.trim().length > 0 && filled.length >= MIN_SET_ENTRIES
+  const { duplicate, identical } = findBadRows(rows)
+  const tooMany = filled.length > MAX_SET_ENTRIES
+  const canSave =
+    name.trim().length > 0 &&
+    filled.length >= MIN_SET_ENTRIES &&
+    !tooMany &&
+    duplicate.size === 0 &&
+    identical.size === 0
 
   const dirty = snapshot(name, icon, rows) !== initial.current
   const { blocked, stay, discard, allowNext } = useUnsavedChanges(dirty)
@@ -198,24 +267,31 @@ export function WordSetEditPage() {
         <span className="px-1 text-xs font-bold uppercase tracking-wide text-content-muted">
           {t('sets.confusingWord')}
         </span>
-        {rows.map((row, i) => (
-          <div key={i} className="contents">
-            <input
-              value={row.main}
-              onChange={(e) => updateRow(i, { main: e.target.value.slice(0, 40) })}
-              placeholder={t('sets.mainPlaceholder')}
-              className={inputClass}
-            />
-            <input
-              value={row.confusing ?? ''}
-              onChange={(e) =>
-                updateRow(i, { confusing: e.target.value.slice(0, 40) })
-              }
-              placeholder={t('sets.confusingPlaceholder')}
-              className={inputClass}
-            />
-          </div>
-        ))}
+        {rows.map((row, i) => {
+          const badMain = duplicate.has(i) || identical.has(i)
+          return (
+            <div key={i} className="contents">
+              <input
+                value={row.main}
+                onChange={(e) =>
+                  updateRow(i, { main: e.target.value.slice(0, 40) })
+                }
+                placeholder={t('sets.mainPlaceholder')}
+                aria-invalid={badMain || undefined}
+                className={badMain ? badInputClass : inputClass}
+              />
+              <input
+                value={row.confusing ?? ''}
+                onChange={(e) =>
+                  updateRow(i, { confusing: e.target.value.slice(0, 40) })
+                }
+                placeholder={t('sets.confusingPlaceholder')}
+                aria-invalid={identical.has(i) || undefined}
+                className={identical.has(i) ? badInputClass : inputClass}
+              />
+            </div>
+          )
+        })}
       </div>
 
       <p className="mt-3 rounded-xl bg-surface-raised px-3 py-2 text-xs text-content-muted">
@@ -229,10 +305,25 @@ export function WordSetEditPage() {
       )}
 
       <div className="mt-auto pt-6">
-        {!canSave && (
-          <p className="mb-2 text-center text-sm text-content-muted">
-            {t('sets.needMore', { count: MIN_SET_ENTRIES })}
+        {/* Name the actual obstacle. A blanket "add more pairs" under a full
+            set with one word typed twice sends you looking in the wrong
+            place entirely. */}
+        {tooMany ? (
+          <p className="mb-2 rounded-xl bg-accent-500/10 px-3 py-2 text-center text-sm font-medium text-accent-600">
+            {t('sets.tooMany', { count: MAX_SET_ENTRIES })}
           </p>
+        ) : duplicate.size > 0 || identical.size > 0 ? (
+          <p className="mb-2 rounded-xl bg-accent-500/10 px-3 py-2 text-center text-sm font-medium text-accent-600">
+            {duplicate.size > 0
+              ? t('sets.duplicateWord')
+              : t('sets.sameWordTwice')}
+          </p>
+        ) : (
+          !canSave && (
+            <p className="mb-2 text-center text-sm text-content-muted">
+              {t('sets.needMore', { count: MIN_SET_ENTRIES })}
+            </p>
+          )
         )}
         <Button
           size="lg"

@@ -14,10 +14,12 @@ import {
   forgetGame,
   GameError,
   leaveGame,
+  MIN_PLAYERS,
   openVoting,
   resolveGuess,
   resolveGuessReview,
   resolveVote,
+  setPlayerBadge,
   skipGuess,
   applyMyScore,
   endIfTooFewAlive,
@@ -31,19 +33,33 @@ import { GameClosedScreen } from '../components/GameClosedScreen'
 import { GameHeaderBar } from '../components/GameHeaderBar'
 import { HostPlayerManager } from '../components/HostPlayerManager'
 import { useGameClosed } from '../game/useGameClosed'
-import { recordGameResult } from '../game/stats'
+import { recordGameResult, type GameResult } from '../game/stats'
+import { colorForBadge, diffBadges, type BadgeDelta } from '../game/badges'
+import { saveProfile, useProfile } from '../game/profile'
+import { BadgeEarnedDialog } from '../components/BadgeEarnedDialog'
+import { BadgeIcon } from '../components/BadgeIcon'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
+import { PlayerDepartures } from '../components/PlayerDepartures'
 import { TurnCircle } from '../components/TurnCircle'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
-import type { Clue, Player, Round, Secret, Vote } from '../game/types'
+import { useBackGuard } from '../game/useBackGuard'
+import { usePrefersReducedMotion } from '../lib/motion'
+import { report } from '../lib/reportError'
+import { holdAppReload } from '../lib/swReload'
+import type {
+  Clue,
+  Player,
+  PlayerBadge,
+  Round,
+  SeatName,
+  Secret,
+  Vote,
+} from '../game/types'
 
 type PlayerMap = Map<string, Player>
 
 /** Stable empty set, so the ring's memoisation isn't defeated by a new one. */
 const EMPTY_IDS: Set<string> = new Set()
-
-/** Kept in step with the lobby's own minimum. */
-const MIN_PLAYERS = 4
 
 function WordCard({
   secret,
@@ -152,8 +168,10 @@ function PlayerRow({
       )}
       <span className="text-2xl">{player.character}</span>
       <span
+        dir="auto"
         className={
-          'flex-1 font-bold text-content' + (eliminated ? ' line-through' : '')
+          'flex flex-1 items-center gap-1.5 font-bold text-content' +
+          (eliminated ? ' line-through' : '')
         }
       >
         {player.name}
@@ -161,6 +179,15 @@ function PlayerRow({
           <span className="ms-1 text-sm font-normal text-content-muted">
             ({t('lobby.you')})
           </span>
+        )}
+        {player.displayedBadge && (
+          <BadgeIcon
+            icon={player.displayedBadge.icon}
+            color={colorForBadge(player.displayedBadge)}
+            filled={1}
+            size="sm"
+            showStars={false}
+          />
         )}
       </span>
       {eliminated && (
@@ -206,10 +233,17 @@ function HostOrWait({
 function ClueFeed({
   clues,
   byId,
+  seatNames,
   currentRound,
 }: {
   clues: Clue[]
   byId: PlayerMap
+  /**
+   * The roster as dealt. A clue outlives the player who typed it — only the
+   * host may delete one — so without this a word said by someone who has since
+   * left showed up in the feed attributed to "—".
+   */
+  seatNames?: Record<string, SeatName> | null
   currentRound: number
 }) {
   const { t } = useTranslation()
@@ -236,17 +270,17 @@ function ClueFeed({
             {clues
               .filter((c) => c.round === roundNo)
               .map((c) => {
-                const p = byId.get(c.playerId)
+                const p = byId.get(c.playerId) ?? seatNames?.[c.playerId]
                 return (
                   <div
                     key={`${c.round}_${c.playerId}`}
                     className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2"
                   >
                     <span className="text-xl">{p?.character ?? '❓'}</span>
-                    <span className="text-sm text-content-muted">
+                    <span dir="auto" className="text-sm text-content-muted">
                       {p?.name ?? '—'}
                     </span>
-                    <span className="ms-auto font-black text-content">
+                    <span dir="auto" className="ms-auto font-black text-content">
                       {c.word}
                     </span>
                   </div>
@@ -336,6 +370,7 @@ function CluePhase({
   staleIds,
   isFullVirtual,
   clues,
+  seatNames,
   imposterAware,
   turnCircle,
 }: {
@@ -348,6 +383,7 @@ function CluePhase({
   staleIds: Set<string>
   isFullVirtual: boolean
   clues: Clue[]
+  seatNames?: Record<string, SeatName> | null
   imposterAware: boolean
   /** In-person only: draw the order as a ring instead of a numbered list. */
   turnCircle: boolean
@@ -361,12 +397,21 @@ function CluePhase({
     .map((id) => byId.get(id))
     .filter((p): p is Player => Boolean(p))
 
-  // Whose turn it is in full-virtual mode: the next alive player in turn order
-  // who hasn't submitted a clue this round.
+  // Whose turn it is in full-virtual mode: the first player still in who
+  // hasn't spoken this round.
+  //
+  // Read off *who has spoken*, never off how many clues there are. A player
+  // who leaves after speaking keeps their clue — only the host may delete one
+  // — while dropping out of the order, so the count ran one seat ahead and
+  // silently skipped whoever came next. Two such leavers and the round could
+  // look finished with two people never asked at all. `submitClue` guards the
+  // same way, so the screen and the server agree.
   const aliveOrder = round.turnOrder.filter((id) => round.aliveIds.includes(id))
-  const thisRoundCount = clues.filter((c) => c.round === round.number).length
-  const currentTurnId = aliveOrder[thisRoundCount]
-  const allSubmitted = thisRoundCount >= aliveOrder.length
+  const spokenThisRound = new Set(
+    clues.filter((c) => c.round === round.number).map((c) => c.playerId),
+  )
+  const currentTurnId = aliveOrder.find((id) => !spokenThisRound.has(id))
+  const allSubmitted = currentTurnId === undefined
 
   return (
     <div className="flex flex-1 flex-col pb-4">
@@ -404,13 +449,7 @@ function CluePhase({
             <TurnCircle
               order={order}
               currentTurnId={currentTurnId}
-              doneIds={
-                new Set(
-                  clues
-                    .filter((c) => c.round === round.number)
-                    .map((c) => c.playerId),
-                )
-              }
+              doneIds={spokenThisRound}
               uid={uid}
               eliminatedIds={
                 new Set(
@@ -436,7 +475,12 @@ function CluePhase({
             {t('game.wordsSaid')}
           </h2>
           <div className="mt-2">
-            <ClueFeed clues={clues} byId={byId} currentRound={round.number} />
+            <ClueFeed
+              clues={clues}
+              byId={byId}
+              seatNames={seatNames}
+              currentRound={round.number}
+            />
           </div>
         </>
       ) : (
@@ -487,7 +531,7 @@ function CluePhase({
                 {t('game.cluesIncompleteHint')}
               </p>
             )}
-            <Button size="lg" fullWidth onClick={() => openVoting(pin)}>
+            <Button size="lg" fullWidth onClick={() => openVoting(pin).catch(report('open the vote'))}>
               {t('game.finishToVote')}
             </Button>
           </>
@@ -511,6 +555,7 @@ function VotingPhase({
   staleIds,
   isFullVirtual,
   clues,
+  seatNames,
 }: {
   pin: string
   round: Round
@@ -521,6 +566,7 @@ function VotingPhase({
   staleIds: Set<string>
   isFullVirtual: boolean
   clues: Clue[]
+  seatNames?: Record<string, SeatName> | null
 }) {
   const { t } = useTranslation()
   const meAlive = round.aliveIds.includes(uid)
@@ -555,7 +601,7 @@ function VotingPhase({
               <button
                 key={id}
                 type="button"
-                onClick={() => castVote(pin, uid, id)}
+                onClick={() => castVote(pin, uid, id).catch(report('cast your vote'))}
                 aria-pressed={selected}
                 className={
                   'flex items-center gap-3 rounded-2xl border-2 p-3 text-start transition-colors ' +
@@ -565,7 +611,9 @@ function VotingPhase({
                 }
               >
                 <span className="text-2xl">{p.character}</span>
-                <span className="flex-1 font-bold text-content">{p.name}</span>
+                <span dir="auto" className="flex-1 font-bold text-content">
+                  {p.name}
+                </span>
                 {staleIds.has(id) && (
                   <span className="rounded-full bg-content-muted/10 px-2 py-0.5 text-xs font-bold text-content-muted">
                     {t('lobby.disconnected')}
@@ -588,7 +636,12 @@ function VotingPhase({
             {t('game.wordsSaid')}
           </summary>
           <div className="mt-2">
-            <ClueFeed clues={clues} byId={byId} currentRound={round.number} />
+            <ClueFeed
+              clues={clues}
+              byId={byId}
+              seatNames={seatNames}
+              currentRound={round.number}
+            />
           </div>
         </details>
       )}
@@ -646,7 +699,7 @@ function TallyPhase({
             >
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{target.character}</span>
-                <span className="flex-1 font-black text-content">
+                <span dir="auto" className="flex-1 font-black text-content">
                   {target.name}
                 </span>
                 <span className="rounded-full bg-brand-100 px-2 py-0.5 text-sm font-black text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
@@ -657,6 +710,7 @@ function TallyPhase({
                 {voters.map((voter) => (
                   <span
                     key={voter.id}
+                    dir="auto"
                     className="rounded-full bg-surface px-2 py-0.5 text-sm text-content-muted"
                   >
                     {voter.character} {voter.name}
@@ -671,7 +725,7 @@ function TallyPhase({
       <HostOrWait
         isHost={isHost}
         label={t('game.continue')}
-        onClick={() => resolveVote(pin)}
+        onClick={() => resolveVote(pin).catch(report('resolve the vote'))}
         waitKey="game.waitingHost"
       />
     </div>
@@ -788,11 +842,15 @@ function GuessPhase({
           <div className="mt-2 flex gap-3">
             <Button
               variant="secondary"
-              onClick={() => resolveGuessReview(pin, false)}
+              onClick={() =>
+                resolveGuessReview(pin, false).catch(report('judge the guess'))
+              }
             >
               ✕ {t('game.guessReviewWrong')}
             </Button>
-            <Button onClick={() => resolveGuessReview(pin, true)}>
+            <Button onClick={() =>
+                resolveGuessReview(pin, true).catch(report('judge the guess'))
+              }>
               ✓ {t('game.guessReviewCorrect')}
             </Button>
           </div>
@@ -822,7 +880,9 @@ function GuessPhase({
             size="lg"
             fullWidth
             disabled={guess.trim().length === 0}
-            onClick={() => castGuess(pin, guess.trim())}
+            onClick={() =>
+              castGuess(pin, guess.trim()).catch(report('submit your guess'))
+            }
           >
             {t('game.submitGuess')}
           </Button>
@@ -849,7 +909,7 @@ function GuessPhase({
           <p className="mb-2 text-xs text-content-muted">
             {t('game.skipGuessHint')}
           </p>
-          <Button variant="secondary" fullWidth onClick={() => skipGuess(pin)}>
+          <Button variant="secondary" fullWidth onClick={() => skipGuess(pin).catch(report('skip the guess'))}>
             {t('game.skipGuess')}
           </Button>
         </div>
@@ -861,6 +921,15 @@ function GuessPhase({
 function Scoreboard({ players }: { players: Player[] }) {
   const { t } = useTranslation()
   const ranked = [...players].sort((a, b) => b.score - a.score)
+  // Live and derived only — never written anywhere. Whoever is on top right
+  // now gets a flame; the moment someone else passes them, it moves. A tie at
+  // the very top (including everyone tied at zero before the first game ends)
+  // shows nobody, since "leading by nothing" isn't leading.
+  const topScore = ranked[0]?.score ?? 0
+  const leaders =
+    topScore > 0 ? ranked.filter((p) => p.score === topScore) : []
+  const soleLeader = leaders.length === 1 ? leaders[0].id : null
+
   return (
     <div>
       <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
@@ -876,7 +945,26 @@ function Scoreboard({ players }: { players: Player[] }) {
               {i + 1}
             </span>
             <span className="text-2xl">{p.character}</span>
-            <span className="flex-1 font-bold text-content">{p.name}</span>
+            <span
+              dir="auto"
+              className="flex flex-1 items-center gap-1.5 font-bold text-content"
+            >
+              {p.name}
+              {p.id === soleLeader && (
+                <span title={t('game.leading')} aria-label={t('game.leading')}>
+                  🔥
+                </span>
+              )}
+              {p.displayedBadge && (
+                <BadgeIcon
+                  icon={p.displayedBadge.icon}
+                  color={colorForBadge(p.displayedBadge)}
+                  filled={1}
+                  size="sm"
+                  showStars={false}
+                />
+              )}
+            </span>
             <span className="text-lg font-black text-brand-600">{p.score}</span>
           </li>
         ))}
@@ -921,24 +1009,34 @@ function RecapPhase({
   round,
   byId,
   players,
+  seatNames,
   isHost,
 }: {
   pin: string
   round: Round
   byId: PlayerMap
   players: Player[]
+  /** The roster as dealt, so a player who has since left can still be named. */
+  seatNames?: Record<string, SeatName> | null
   isHost: boolean
 }) {
   const { t } = useTranslation()
+  const reducedMotion = usePrefersReducedMotion()
   const crewWon = round.outcome === 'crew-wins'
-  const imposter = round.imposterId ? byId.get(round.imposterId) : null
+  // Fall back to the dealt roster. A game that ends *because* the imposter
+  // walked out has no player document left to look them up in, so this line —
+  // the one thing everyone is waiting for — simply vanished, and the recap
+  // said "Crew wins" and nothing else.
+  const imposter = round.imposterId
+    ? (byId.get(round.imposterId) ?? seatNames?.[round.imposterId] ?? null)
+    : null
   const guessed = round.guessText != null
   const breakdown = round.scoreBreakdown ?? {}
 
   return (
     <div className="flex flex-1 flex-col pb-4">
       <div className="relative flex flex-col items-center gap-2 pt-2 text-center">
-        {crewWon && <Confetti />}
+        {crewWon && !reducedMotion && <Confetti />}
         <div
           className={
             'text-6xl ' + (crewWon ? 'animate-pop-in' : 'animate-ominous-shake')
@@ -952,7 +1050,7 @@ function RecapPhase({
         {imposter && (
           <p className="text-content-muted">
             {t('game.theImposterWas')}{' '}
-            <span className="font-black text-content">
+            <span dir="auto" className="font-black text-content">
               {imposter.character} {imposter.name}
             </span>
           </p>
@@ -960,7 +1058,9 @@ function RecapPhase({
         {round.mainWord && (
           <p className="text-content-muted">
             {t('game.theWordWas')}{' '}
-            <span className="font-black text-content">{round.mainWord}</span>
+            <span dir="auto" className="font-black text-content">
+              {round.mainWord}
+            </span>
           </p>
         )}
         {guessed && (
@@ -994,9 +1094,21 @@ function RecapPhase({
               >
                 <span className="text-2xl">{p.character}</span>
                 <div className="flex-1">
-                  <div className="flex items-center gap-1 font-bold text-content">
+                  <div
+                    dir="auto"
+                    className="flex items-center gap-1.5 font-bold text-content"
+                  >
                     {p.name}
                     {p.id === round.imposterId && <span>🕵️</span>}
+                    {p.displayedBadge && (
+                      <BadgeIcon
+                        icon={p.displayedBadge.icon}
+                        color={colorForBadge(p.displayedBadge)}
+                        filled={1}
+                        size="sm"
+                        showStars={false}
+                      />
+                    )}
                   </div>
                   <div className="mt-0.5 text-xs text-content-muted">
                     {line.reasons.map((r, i) => (
@@ -1024,7 +1136,9 @@ function RecapPhase({
       <HostOrWait
         isHost={isHost}
         label={t('game.toScoreboard')}
-        onClick={() => continueToScoreboard(pin)}
+        onClick={() =>
+          continueToScoreboard(pin).catch(report('show the scoreboard'))
+        }
         waitKey="game.waitingHostNext"
       />
     </div>
@@ -1085,7 +1199,7 @@ function ResultPhase({
               size="lg"
               fullWidth
               disabled={!enoughPlayers}
-              onClick={() => startGame(pin)}
+              onClick={() => startGame(pin).catch(report('start the next game'))}
             >
               {t('game.nextGame')}
             </Button>
@@ -1093,7 +1207,7 @@ function ResultPhase({
               variant="ghost"
               fullWidth
               className="mt-2"
-              onClick={() => backToLobby(pin)}
+              onClick={() => backToLobby(pin).catch(report('return to the lobby'))}
             >
               {t('game.backToLobby')}
             </Button>
@@ -1130,10 +1244,38 @@ export function GamePage() {
   const clues = useClues(pin, isFullVirtual)
   const [leaving, setLeaving] = useState(false)
 
+  // A deploy claims every open page at once and reloads it. That is fine on
+  // the home screen and awful here — mid-reveal, mid-vote, card in hand — so
+  // the new version waits until this screen is behind us.
+  useEffect(() => holdAppReload(), [])
+
   // Only to learn whether the set in play is this host's own, which decides
   // whether leaving has to ask what becomes of it.
   const activeSet = useWordSetById(isHost ? game?.wordSetId : null)
   const myWordSet = activeSet?.ownerId === uid ? activeSet : null
+
+  // Only for the account's saved badge choice. `recordGameResult` returns the
+  // totals either side of its own write, so the badge diff no longer needs a
+  // "before" snapshot from here.
+  const { profile, loading: profileLoading } = useProfile(user?.uid, isGuest)
+  const [badgeDeltas, setBadgeDeltas] = useState<BadgeDelta[] | null>(null)
+  // Which badge this player is showing, tracked locally because `useProfile`
+  // loads once and never refreshes — without it, picking a badge from the
+  // announcement would leave the dialog still offering the one just chosen.
+  const [activeBadgeKey, setActiveBadgeKey] = useState<string | null>(null)
+  useEffect(() => {
+    if (!profileLoading) setActiveBadgeKey(profile?.displayedBadge?.key ?? null)
+  }, [profile, profileLoading])
+
+  // Updates the account's saved default (so future rooms start with it already
+  // showing) and this room's player document (so it shows here immediately,
+  // without waiting for a rejoin).
+  async function handleSetActiveBadge(badge: PlayerBadge) {
+    if (!user) return
+    setActiveBadgeKey(badge.key)
+    await saveProfile(user.uid, { displayedBadge: badge }).catch(() => {})
+    await setPlayerBadge(pin, user.uid, badge).catch(() => {})
+  }
 
   async function handleLeave(newHostId?: string, wordSet?: WordSetHandover) {
     if (user) await leaveGame(pin, user.uid, newHostId, wordSet)
@@ -1152,6 +1294,13 @@ export function GamePage() {
   )
 
   const closed = useGameClosed(loading, game)
+
+  // Back has nowhere sensible to go from a running game: every screen behind
+  // this one notices you're still in it and sends you straight back, so the
+  // button reads as broken. Ask about leaving instead — the only real way out
+  // — and let a second press close that question again. Once the room itself
+  // is gone there is nothing to leave, so Back goes back.
+  useBackGuard(!closed, () => setLeaving((open) => !open))
 
   // Follow the game back to the lobby when it ends there — or, if the host
   // closed the room, stop and say so rather than vanishing mid-round.
@@ -1202,23 +1351,70 @@ export function GamePage() {
     recordedRef.current = key
 
     const wasImposter = round.imposterId === user.uid
-    recordGameResult(user.uid, {
+    const voteHistory = round.voteHistory ?? []
+    const survived = round.aliveIds.includes(user.uid)
+    const votedFor = voteHistory.some((v) => v.target === user.uid)
+    const caught = wasImposter && round.outcome === 'crew-wins'
+    const result: GameResult = {
       pin,
       gameNumber: game.gameNumber ?? 1,
       wasImposter,
       wasHost: game.hostId === user.uid,
-      won:
-        round.outcome === (wasImposter ? 'imposter-wins' : 'crew-wins'),
+      won: round.outcome === (wasImposter ? 'imposter-wins' : 'crew-wins'),
       points: round.scoreBreakdown?.[user.uid]?.delta ?? 0,
-    }).catch(() => {
-      // Stats are a keepsake, never a reason to interrupt the game.
-      recordedRef.current = null
-    })
+      playerCount: (game.seatOrder ?? round.turnOrder).length,
+      roundCount: round.number,
+      mode: game.mode,
+      scoring: game.scoring,
+      guess: game.guess,
+      customSet: Boolean(game.wordSetId),
+      survived,
+      // Every round you held the card and the vote went elsewhere. Getting
+      // caught costs you the round you were caught in; getting away with it
+      // to the end means all of them.
+      imposterRoundsSurvived: wasImposter
+        ? Math.max(0, round.number - (caught ? 1 : 0))
+        : 0,
+      correctImposterVotes: voteHistory.filter(
+        (v) => v.voter === user.uid && v.target === round.imposterId,
+      ).length,
+      neverVotedFor: voteHistory.length > 0 && !votedFor,
+      caughtRound1:
+        round.number === 1 &&
+        round.outcome === 'crew-wins' &&
+        round.eliminatedRole === 'imposter',
+      guessedRightAsImposter: caught && round.guessCorrect === true,
+      // Suspected and still standing — true for crew and imposter alike.
+      houdini: votedFor && survived,
+      unanimousCatch: round.eliminationUnanimous === true,
+    }
+
+    recordGameResult(user.uid, result)
+      .then((written) => {
+        // Null means this game was already counted, so nothing was earned now.
+        if (!written) return
+        const deltas = diffBadges(written.before, written.after)
+        if (deltas.length > 0) setBadgeDeltas(deltas)
+      })
+      .catch(() => {
+        // Stats are a keepsake, never a reason to interrupt the game.
+        recordedRef.current = null
+      })
   }, [isGuest, user, game, round, pin])
 
-  // The host also ends the game once the table is down to two — people
-  // leaving can reach the final two just as an elimination can. Only the host
-  // may write everyone's scores, so it can't be the departing player.
+  // End the game once the table is down to two, or once the imposter has left
+  // — people walking out can reach the final two just as an elimination can.
+  //
+  // In practice this is the host's job: deciding either of those means reading
+  // who holds the imposter's card, and only the host may. Other devices call
+  // it, find they cannot see, and stop (see `endIfTooFewAlive`).
+  //
+  // The signature is a cost guard, not a correctness one. `someoneGone` stays
+  // true for the rest of the game once anybody leaves, so this fired on every
+  // snapshot — and with a heartbeat per player every eight seconds, that meant
+  // 2 + N Firestore reads several times a second against a 50k/day free quota.
+  // Now it runs only when something it actually looks at has changed.
+  const lastCheck = useRef('')
   useEffect(() => {
     if (!me || !round || !game) return
     // Mirrors the guard in `endIfTooFewAlive`: only between rounds' work, never
@@ -1236,14 +1432,17 @@ export function GamePage() {
     const dealtCount = game.seatOrder?.length ?? round.turnOrder.length
     const someoneGone = players.length < dealtCount
     if (round.aliveIds.length > 2 && !someoneGone) return
-    // Any player, not just the host — a host who has left or whose phone is
-    // asleep must not be able to strand everyone else in a game that should
-    // already be over. Several devices may reach this at once; the writes are
-    // identical, so the duplicates are harmless.
+
+    const signature = `${round.phase}:${round.number}:${round.aliveIds.length}:${players.length}`
+    if (lastCheck.current === signature) return
+    lastCheck.current = signature
+
+    // Several devices may reach this at once; the writes are identical, so the
+    // duplicates are harmless.
     endIfTooFewAlive(pin).catch((e) =>
       console.error('endIfTooFewAlive failed', e),
     )
-  }, [me, game, round?.aliveIds.length, round?.phase, round, players.length, pin])
+  }, [me, game, round, players.length, pin])
 
   // Once a game is over, pay yourself the points it awarded. Each device does
   // its own, because writing another player's document is host-only and
@@ -1319,6 +1518,7 @@ export function GamePage() {
           staleIds={staleIds}
           isFullVirtual={isFullVirtual}
           clues={clues}
+          seatNames={game.seatNames}
           imposterAware={imposterAware}
           turnCircle={turnCircle}
         />
@@ -1336,6 +1536,7 @@ export function GamePage() {
           staleIds={staleIds}
           isFullVirtual={isFullVirtual}
           clues={clues}
+          seatNames={game.seatNames}
         />
       )
       break
@@ -1361,6 +1562,7 @@ export function GamePage() {
           round={round}
           byId={byId}
           players={players}
+          seatNames={game.seatNames}
           isHost={isHost}
         />
       )
@@ -1379,6 +1581,8 @@ export function GamePage() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <PlayerDepartures players={players} active={!closed} selfId={uid} />
+
       <GameHeaderBar pin={pin} wordSetName={game.wordSetName} />
 
       {phaseView}
@@ -1404,6 +1608,15 @@ export function GamePage() {
           onCancel={() => setLeaving(false)}
           onLeave={handleLeave}
           onClose={handleCloseGame}
+        />
+      )}
+
+      {badgeDeltas && (
+        <BadgeEarnedDialog
+          deltas={badgeDeltas}
+          activeKey={activeBadgeKey}
+          onSetActive={handleSetActiveBadge}
+          onDismiss={() => setBadgeDeltas(null)}
         />
       )}
     </div>

@@ -161,6 +161,51 @@ await check('non-player cannot join by writing a player doc for someone else',
 await check('unauthenticated cannot read a game',
   assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'games', PIN))))
 
+console.log('\n--- Nickname claims ---')
+// The whole point of the claims collection: "is this name free?" has to be one
+// atomic step, or two people typing the same name both read an empty room.
+await seed()
+await check('player claims a free nickname',
+  assertSucceeds(setDoc(g(as(P2), 'names', 'n_ben'), { uid: P2, name: 'Ben', claimedAt: serverTimestamp() })))
+await check('someone else CANNOT take a claimed nickname',
+  assertFails(setDoc(g(as(P3), 'names', 'n_ben'), { uid: P3, name: 'Ben', claimedAt: serverTimestamp() })))
+await check('holder renews their own claim (renaming back, changing character)',
+  assertSucceeds(setDoc(g(as(P2), 'names', 'n_ben'), { uid: P2, name: 'BEN', claimedAt: serverTimestamp() })))
+await check('claim cannot be back-dated or post-dated',
+  assertFails(setDoc(g(as(P3), 'names', 'n_dan'), { uid: P3, name: 'Dan', claimedAt: Timestamp.fromMillis(Date.now() + 86400000) })))
+await check('holder releases their own claim',
+  assertSucceeds(deleteDoc(g(as(P2), 'names', 'n_ben'))))
+
+// A claim can outlive its owner when their cleanup never lands. It has to
+// come free eventually, or one closed tab locks a name away for the night.
+await seed()
+await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  const db = ctx.firestore()
+  // Nobody by this uid is in the room any more.
+  await setDoc(doc(db, 'games', PIN, 'names', 'n_ghost'), {
+    uid: 'ghost_uid', name: 'Ghost', claimedAt: Timestamp.fromMillis(Date.now() - 120000),
+  })
+  // Fresh: this is what an honest claimant looks like in the moment between
+  // taking a name and creating their player document.
+  await setDoc(doc(db, 'games', PIN, 'names', 'n_joining'), {
+    uid: 'joining_uid', name: 'Joining', claimedAt: Timestamp.now(),
+  })
+  // Held by someone who is very much still here, but claimed long ago.
+  await setDoc(doc(db, 'games', PIN, 'names', 'n_player3_uid'), {
+    uid: P3, name: P3, claimedAt: Timestamp.fromMillis(Date.now() - 120000),
+  })
+})
+await check('an abandoned claim can be taken over',
+  assertSucceeds(setDoc(g(as(P2), 'names', 'n_ghost'), { uid: P2, name: 'Ghost', claimedAt: serverTimestamp() })))
+await check('a claim mid-join is NOT stealable (the grace period)',
+  assertFails(setDoc(g(as(P2), 'names', 'n_joining'), { uid: P2, name: 'Joining', claimedAt: serverTimestamp() })))
+await check('an old claim whose holder is still here is NOT stealable',
+  assertFails(setDoc(g(as(P2), 'names', 'n_player3_uid'), { uid: P2, name: P3, claimedAt: serverTimestamp() })))
+await check('player cannot delete someone else\'s claim',
+  assertFails(deleteDoc(g(as(P2), 'names', 'n_player3_uid'))))
+await check('host clears up any claim (kicking, closing the room)',
+  assertSucceeds(deleteDoc(g(as(HOST), 'names', 'n_player3_uid'))))
+
 console.log('\n--- Profiles & word sets ---')
 await testEnv.withSecurityRulesDisabled(async (ctx) => {
   await setDoc(doc(ctx.firestore(), 'users', HOST), { nickname: 'Host' })

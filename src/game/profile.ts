@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { Stats } from './stats'
-import type { GameOptions } from './types'
+import type { GameOptions, PlayerBadge } from './types'
 
 /**
  * An account holder's saved defaults (stored at users/{uid}). Every field is
@@ -27,6 +27,13 @@ export interface Profile {
    * host that does it.
    */
   stats?: Stats
+  /**
+   * The badge shown beside this account's name in a room, picked from the
+   * ones they've earned. Snapshotted (icon + tier alongside the key) rather
+   * than a bare key, because it gets copied verbatim onto each room's player
+   * document — see `PlayerBadge` for why. `null` clears it back to none.
+   */
+  displayedBadge?: PlayerBadge | null
 }
 
 /**

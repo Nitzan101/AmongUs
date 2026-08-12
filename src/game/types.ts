@@ -5,7 +5,14 @@ import type { Language } from '../i18n'
 export type GameMode = 'half' | 'full'
 export type Scoring = 'teamRace' | 'survivors' | 'detective'
 export type GuessRule = 'final' | 'steal' | 'off'
-export type GameStatus = 'lobby' | 'playing' | 'ended'
+/**
+ * A room is either waiting or playing. There is no third state: a finished
+ * game returns to the lobby for the next one, and a room that is really over
+ * is deleted. (An `'ended'` member lived here for a while that nothing ever
+ * set and nothing ever checked — a state the code invited you to handle and
+ * could never reach.)
+ */
+export type GameStatus = 'lobby' | 'playing'
 
 /** The phase within an active game. */
 export type RoundPhase =
@@ -77,6 +84,15 @@ export interface Round {
   eliminatedRole?: 'crew' | 'imposter' | null
   /** Every vote cast this game, accumulated for the Detective scoring bonus. */
   voteHistory?: Vote[]
+  /**
+   * Whether every vote cast this round targeted the player who got eliminated
+   * — stamped at the moment of the tally, because by the time the game ends
+   * `voteHistory` has piled every round's votes together and a later round
+   * (or a tie's revote) can no longer be told apart from this one. Reset
+   * whenever the round moves on without ending the game, so a unanimous
+   * round 1 doesn't leak into a split round 2. Feeds the "Clean Sweep" badge.
+   */
+  eliminationUnanimous?: boolean | null
   /** The caught imposter's typed guess at the main word (guess phase). */
   guessText?: string | null
   guessCorrect?: boolean | null
@@ -123,6 +139,12 @@ export interface Vote {
   target: string
 }
 
+/** Enough of a player to name them once their document is gone. */
+export interface SeatName {
+  name: string
+  character: string
+}
+
 /** A game room document (stored at games/{pin}). */
 export interface Game extends GameOptions {
   pin: string
@@ -130,6 +152,17 @@ export interface Game extends GameOptions {
   status: GameStatus
   /** Persistent seating order, set on first start and reused for rotation. */
   seatOrder?: string[]
+  /**
+   * Who was dealt in, by name, snapshotted when the game started.
+   *
+   * A player document is the only place a name lives, and it is deleted the
+   * instant someone leaves — so anything shown after the fact about a player
+   * who has gone had nothing to show. The recap is the case that matters: a
+   * game that ends *because* the imposter walked out could not say who the
+   * imposter was. Not secret; the same names are readable from the player
+   * list by anyone in the room.
+   */
+  seatNames?: Record<string, SeatName> | null
   /** Which game number this is in the room (rotates turn order, drives scoring). */
   gameNumber?: number
   /**
@@ -156,6 +189,29 @@ export interface Game extends GameOptions {
   round?: Round
 }
 
+/** How far up a badge track someone has climbed. */
+export type TierName = 'bronze' | 'silver' | 'gold' | 'platinum'
+
+/**
+ * The badge an account has chosen to show off, snapshotted rather than
+ * looked up live: other players in a room can't read this account's own
+ * stats (`users/{uid}` is owner-only), so the icon and tier have to travel
+ * with the player document itself. It goes stale the moment the account
+ * earns something better, until they visit their profile or the room again —
+ * a stale badge is a much smaller problem than widening who can read a
+ * profile.
+ *
+ * Lives here rather than in `badges.ts` because it is stored on the player
+ * document, and `badges.ts` imports the game types rather than the other way
+ * around.
+ */
+export interface PlayerBadge {
+  /** Which track it came from. */
+  key: string
+  icon: string
+  tier: TierName
+}
+
 /** A player in a game (stored at games/{pin}/players/{uid}). */
 export interface Player {
   id: string
@@ -165,6 +221,17 @@ export interface Player {
   score: number
   /** Updated periodically while the app is open; drives the "disconnected" tag. */
   lastSeen?: Timestamp | null
+  /** The badge shown beside this player's name, if they've earned and picked one. */
+  displayedBadge?: PlayerBadge | null
+  /**
+   * The last game this player has already been paid for, as `{pin}:{n}`.
+   *
+   * Every device applies its own points from `round.scoreBreakdown` — writing
+   * another player's document is host-only — and each of them sees the
+   * finished round over and over, so this is what stops a reload paying out
+   * twice. See `applyMyScore`.
+   */
+  scoredGame?: string
 }
 
 /**

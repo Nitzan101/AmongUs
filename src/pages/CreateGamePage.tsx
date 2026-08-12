@@ -46,10 +46,15 @@ export function CreateGamePage() {
       uid: user!.uid,
       name,
       character: profile?.character || randomCharacter(),
+      badge: profile?.displayedBadge,
     })
       .then((pin) => navigate(`/lobby/${pin}`, { replace: true }))
-      .catch(() => {
+      .catch((e) => {
         // Let them try again rather than stranding them on a dead spinner.
+        // "Try again" happens to be the right advice for every way this fails
+        // — including a PIN that was taken six times running — but the reason
+        // still belongs somewhere a developer can read it.
+        console.error('Could not create the game', e)
         started.current = false
         setError(t('create.createError'))
       })

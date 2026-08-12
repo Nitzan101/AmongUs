@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button'
 import { IdentityFields } from '../components/IdentityFields'
 import { useAuth } from '../auth/AuthContext'
 import { randomCharacter } from '../game/characters'
-import { checkGameJoinable, joinGame } from '../game/gameService'
+import { checkGameJoinable, joinGame, MAX_PLAYERS } from '../game/gameService'
 import { joinErrorKey } from '../game/joinErrors'
 import { useProfile } from '../game/profile'
 
@@ -35,10 +35,17 @@ export function JoinIdentityPage() {
   useEffect(() => {
     let cancelled = false
     checkGameJoinable(pin)
-      .then(({ alreadyJoined, inProgress: running }) => {
+      .then(({ alreadyJoined, inProgress: running, full }) => {
         if (cancelled) return
         if (alreadyJoined) {
           navigate(`/lobby/${pin}`, { replace: true })
+          return
+        }
+        // Say so before the name and character, not after: filling in a form
+        // only to be told there was never a seat is the rudest possible order.
+        if (full) {
+          setBlocked(t('join.errors.full', { count: MAX_PLAYERS }))
+          setChecking(false)
           return
         }
         setInProgress(running)
@@ -46,7 +53,7 @@ export function JoinIdentityPage() {
       })
       .catch((err) => {
         if (cancelled) return
-        setBlocked(t(joinErrorKey(err)))
+        setBlocked(t(joinErrorKey(err), { count: MAX_PLAYERS }))
         setChecking(false)
       })
     return () => {
@@ -68,10 +75,10 @@ export function JoinIdentityPage() {
     setError(null)
     setBusy(true)
     try {
-      await joinGame(pin, nickname, character)
+      await joinGame(pin, nickname, character, profile?.displayedBadge)
       navigate(`/lobby/${pin}`)
     } catch (err) {
-      setError(t(joinErrorKey(err)))
+      setError(t(joinErrorKey(err), { count: MAX_PLAYERS }))
       setBusy(false)
     }
   }

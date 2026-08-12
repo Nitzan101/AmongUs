@@ -9,18 +9,25 @@ import {
   forgetGame,
   kickPlayer,
   leaveGame,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
   startGame,
 } from '../game/gameService'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
+import { PlayerDepartures } from '../components/PlayerDepartures'
+import { useBackGuard } from '../game/useBackGuard'
+import { report } from '../lib/reportError'
+import { shareLink } from '../lib/share'
 import { GameSettingsPanel } from '../components/GameSettingsPanel'
 import { EditIdentityDialog } from '../components/EditIdentityDialog'
+import { colorForBadge } from '../game/badges'
+import { BadgeIcon } from '../components/BadgeIcon'
 import { GameClosedScreen } from '../components/GameClosedScreen'
 import { useGameClosed } from '../game/useGameClosed'
 import { isStale, STALE_AFTER_MS, useNow, usePresence } from '../game/presence'
-import { MIN_SET_ENTRIES, useMyWordSets, useWordSetById } from '../game/wordSets'
+import { useMyWordSets, useWordSetById } from '../game/wordSets'
 import type { WordSetHandover } from '../game/gameService'
-
-const MIN_PLAYERS = 4
+import type { Player } from '../game/types'
 
 export function LobbyPage() {
   const { t } = useTranslation()
@@ -41,10 +48,9 @@ export function LobbyPage() {
   // Not gated on `isGuest`: hosting implies an account, and passing the guest
   // flag here silently returned an empty list, so the Words section vanished
   // from the panel with nothing to explain why.
+  // All of them, not only the ones big enough to deal from: the panel has to
+  // be able to tell "your set has shrunk" from "this set was never yours".
   const { sets } = useMyWordSets(isHostUser ? user?.uid : undefined, false)
-  const usableSets = sets.filter(
-    (s) => (s.entries?.length ?? 0) >= MIN_SET_ENTRIES,
-  )
   // A set a previous host lent the room, and the set in play — the latter only
   // to find out whether it's ours, which decides if leaving has to ask about it.
   const loanedSet = useWordSetById(isHostUser ? game?.sharedWordSetId : null)
@@ -62,6 +68,10 @@ export function LobbyPage() {
   }, [game?.status, me, pin, navigate])
 
   const closed = useGameClosed(loading, game)
+
+  // Same as in a running game: the screens behind the lobby all bounce you
+  // back into it, so Back asks about leaving instead of looking broken.
+  useBackGuard(!closed, () => setLeaving((open) => !open))
 
   // If we're no longer a player here (kicked, or the host closed the room), forget it.
   useEffect(() => {
@@ -120,16 +130,13 @@ export function LobbyPage() {
     )
   }
 
-  const shareLink = `${window.location.origin}/join/${pin}`
+  const invite = `${window.location.origin}/join/${pin}`
 
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(shareLink)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard may be unavailable; the PIN is still shown */
-    }
+  async function share() {
+    const result = await shareLink(invite, t('lobby.shareInvite'))
+    if (result !== 'copied') return
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }
 
   async function handleLeave(newHostId?: string, wordSet?: WordSetHandover) {
@@ -142,6 +149,11 @@ export function LobbyPage() {
     navigate('/')
   }
 
+  function handleKick(player: Player) {
+    if (!window.confirm(t('game.confirmKick', { name: player.name }))) return
+    kickPlayer(pin, player.id).catch(report('remove that player'))
+  }
+
   // Sort so the host shows first, then by join order isn't tracked — keep stable by name.
   const sorted = [...players].sort((a, b) =>
     a.isHost === b.isHost ? a.name.localeCompare(b.name) : a.isHost ? -1 : 1,
@@ -149,6 +161,8 @@ export function LobbyPage() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <PlayerDepartures players={players} active={!closed} selfId={user?.uid} />
+
       <h1 className="text-3xl font-black text-content">{t('lobby.title')}</h1>
 
       <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-surface-raised p-4">
@@ -160,7 +174,7 @@ export function LobbyPage() {
             {pin}
           </div>
         </div>
-        <Button variant="secondary" onClick={copyLink}>
+        <Button variant="secondary" onClick={share}>
           {copied ? `✓ ${t('lobby.copied')}` : `🔗 ${t('lobby.shareLink')}`}
         </Button>
       </div>
@@ -170,7 +184,7 @@ export function LobbyPage() {
         game={game}
         isHost={isHost}
         uid={user?.uid ?? ''}
-        usableSets={usableSets}
+        mySets={sets}
         loanedSet={loanedSet}
       />
 
@@ -178,10 +192,25 @@ export function LobbyPage() {
         <h2 className="text-sm font-bold uppercase tracking-wide text-content-muted">
           {t('lobby.players')}
         </h2>
-        <span className="text-sm font-bold text-content-muted">
-          {players.length}
+        {/* Out of the maximum, not just a bare count: a room filling up is
+            worth seeing before somebody is turned away at the door. */}
+        <span
+          className={
+            'text-sm font-bold ' +
+            (players.length >= MAX_PLAYERS
+              ? 'text-accent-600'
+              : 'text-content-muted')
+          }
+        >
+          {players.length} / {MAX_PLAYERS}
         </span>
       </div>
+
+      {players.length >= MAX_PLAYERS && (
+        <p className="mt-2 rounded-xl bg-sunny-400/15 px-3 py-2 text-sm font-medium text-content">
+          {t('lobby.roomFull', { count: MAX_PLAYERS })}
+        </p>
+      )}
 
       <ul className="mt-2 flex flex-col gap-2">
         {sorted.map((p) => (
@@ -199,9 +228,20 @@ export function LobbyPage() {
               >
                 <span className="text-3xl">{p.character}</span>
                 <span className="flex-1 font-bold text-content">
-                  {p.name}
-                  <span className="ms-1 text-sm font-normal text-content-muted">
-                    ({t('lobby.you')})
+                  <span className="flex items-center gap-1.5">
+                    {p.name}
+                    <span className="text-sm font-normal text-content-muted">
+                      ({t('lobby.you')})
+                    </span>
+                    {p.displayedBadge && (
+                      <BadgeIcon
+                        icon={p.displayedBadge.icon}
+                        color={colorForBadge(p.displayedBadge)}
+                        filled={1}
+                        size="sm"
+                        showStars={false}
+                      />
+                    )}
                   </span>
                   <span className="block text-xs font-normal text-brand-600">
                     {t('lobby.editIdentityHint')}
@@ -211,7 +251,18 @@ export function LobbyPage() {
             ) : (
               <>
                 <span className="text-3xl">{p.character}</span>
-                <span className="flex-1 font-bold text-content">{p.name}</span>
+                <span className="flex flex-1 items-center gap-1.5 font-bold text-content">
+                  {p.name}
+                  {p.displayedBadge && (
+                    <BadgeIcon
+                      icon={p.displayedBadge.icon}
+                      color={colorForBadge(p.displayedBadge)}
+                      filled={1}
+                      size="sm"
+                      showStars={false}
+                    />
+                  )}
+                </span>
               </>
             )}
             {isStale(p.lastSeen, now, STALE_AFTER_MS) && (
@@ -224,10 +275,13 @@ export function LobbyPage() {
                 {t('lobby.host')}
               </span>
             )}
+            {/* Ask first, as the in-game version already does. This is a bare
+                ✕ sitting beside every name on a phone, and removing someone
+                cannot be undone — they have to be sent the link again. */}
             {isHost && !p.isHost && (
               <button
                 type="button"
-                onClick={() => kickPlayer(pin, p.id)}
+                onClick={() => handleKick(p)}
                 className="rounded-full px-2 py-0.5 text-sm text-accent-500 hover:bg-accent-500/10"
                 aria-label={t('lobby.kick')}
               >
@@ -250,7 +304,7 @@ export function LobbyPage() {
               size="lg"
               fullWidth
               disabled={players.length < MIN_PLAYERS}
-              onClick={() => startGame(pin)}
+              onClick={() => startGame(pin).catch(report('start the game'))}
             >
               {t('lobby.startGame')}
             </Button>
