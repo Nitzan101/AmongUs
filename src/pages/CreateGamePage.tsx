@@ -27,7 +27,7 @@ export function CreateGamePage() {
   const { user, isGuest, loading: authLoading } = useAuth()
   const { profile, loading: profileLoading } = useProfile(user?.uid, isGuest)
 
-  const [error, setError] = useState<string | null>(null)
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   // Creating writes a room; a double-fire would leave an orphan behind.
   const started = useRef(false)
 
@@ -56,9 +56,15 @@ export function CreateGamePage() {
         // still belongs somewhere a developer can read it.
         console.error('Could not create the game', e)
         started.current = false
-        setError(t('create.createError'))
+        setErrorKey('create.createError')
       })
-  }, [authLoading, profileLoading, isGuest, profile, user, i18n, navigate, t])
+    // Not keyed on `t`. A language switch would re-run this, and after a
+    // failed attempt (`started` back to false) that means silently creating a
+    // room nobody asked for. `t('auth.guest')` is only a last-resort name for
+    // an account with neither a nickname nor a display name, and it is read at
+    // the moment of creation, which is the moment that matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, profileLoading, isGuest, profile, user, i18n, navigate])
 
   // Hosting requires a real (non-guest) account.
   if (!authLoading && isGuest) {
@@ -78,11 +84,11 @@ export function CreateGamePage() {
     )
   }
 
-  if (error) {
+  if (errorKey) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <div className="text-6xl">😕</div>
-        <p className="max-w-xs font-medium text-accent-600">{error}</p>
+        <p className="max-w-xs font-medium text-accent-600">{t(errorKey)}</p>
         <Button size="lg" onClick={() => navigate(0)}>
           {t('create.submit')}
         </Button>

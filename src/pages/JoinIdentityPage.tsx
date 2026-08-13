@@ -24,9 +24,13 @@ export function JoinIdentityPage() {
   const [nickname, setNickname] = useState('')
   const [character, setCharacter] = useState<string>(randomCharacter)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Both held as translation keys rather than finished sentences, so that
+  // setting one never needs `t` in scope — which is what dragged `t` into the
+  // dependency list below. They also follow the language when it changes now,
+  // instead of staying stuck in whichever one they were raised in.
+  const [errorKey, setErrorKey] = useState<string | null>(null)
   const [checking, setChecking] = useState(true)
-  const [blocked, setBlocked] = useState<string | null>(null)
+  const [blockedKey, setBlockedKey] = useState<string | null>(null)
   const [inProgress, setInProgress] = useState(false)
 
   // Re-check the PIN (share links arrive here without passing through step 1).
@@ -44,7 +48,7 @@ export function JoinIdentityPage() {
         // Say so before the name and character, not after: filling in a form
         // only to be told there was never a seat is the rudest possible order.
         if (full) {
-          setBlocked(t('join.errors.full', { count: MAX_PLAYERS }))
+          setBlockedKey('join.errors.full')
           setChecking(false)
           return
         }
@@ -53,13 +57,16 @@ export function JoinIdentityPage() {
       })
       .catch((err) => {
         if (cancelled) return
-        setBlocked(t(joinErrorKey(err), { count: MAX_PLAYERS }))
+        setBlockedKey(joinErrorKey(err))
         setChecking(false)
       })
     return () => {
       cancelled = true
     }
-  }, [pin, t, navigate])
+    // Not keyed on `t`: a language switch would otherwise re-run the whole
+    // PIN check for nothing. Harmless here, but it is the same mistake that
+    // made the word-set editor throw away unsaved edits.
+  }, [pin, navigate])
 
   // Pre-fill from the account's saved defaults once they've loaded.
   useEffect(() => {
@@ -72,13 +79,13 @@ export function JoinIdentityPage() {
   }, [profile, profileLoading, user, isGuest])
 
   async function handleJoin() {
-    setError(null)
+    setErrorKey(null)
     setBusy(true)
     try {
       await joinGame(pin, nickname, character, profile?.displayedBadge)
       navigate(`/lobby/${pin}`)
     } catch (err) {
-      setError(t(joinErrorKey(err), { count: MAX_PLAYERS }))
+      setErrorKey(joinErrorKey(err))
       setBusy(false)
     }
   }
@@ -93,11 +100,13 @@ export function JoinIdentityPage() {
     )
   }
 
-  if (blocked) {
+  if (blockedKey) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
         <div className="text-6xl">🚪</div>
-        <h1 className="text-2xl font-black text-content">{blocked}</h1>
+        <h1 className="text-2xl font-black text-content">
+          {t(blockedKey, { count: MAX_PLAYERS })}
+        </h1>
         <Button onClick={() => navigate('/join')}>{t('join.tryAnother')}</Button>
       </div>
     )
@@ -129,9 +138,9 @@ export function JoinIdentityPage() {
         />
       </div>
 
-      {error && (
+      {errorKey && (
         <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
-          {error}
+          {t(errorKey, { count: MAX_PLAYERS })}
         </p>
       )}
 

@@ -116,7 +116,16 @@ export function WordSetEditPage() {
   const [rows, setRows] = useState<WordSetEntry[]>(emptyRows(BLANK_ROWS))
   const [loading, setLoading] = useState(!isNew)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /**
+   * The *key* of whatever went wrong, translated at render time.
+   *
+   * Holding the translated string meant `t` had to be in scope wherever an
+   * error was set — including the load effect below, whose dependency list it
+   * then joined. See the comment there for what that cost. Keeping the key
+   * also means the message follows the language when it changes, instead of
+   * staying frozen in whichever one it was raised in.
+   */
+  const [errorKey, setErrorKey] = useState<string | null>(null)
 
   /**
    * What was loaded, to compare against. Held as a ref rather than state
@@ -146,14 +155,22 @@ export function WordSetEditPage() {
           ...emptyRows(2),
         ])
       })
-      .catch(() => setError(t('sets.loadError')))
+      .catch(() => setErrorKey('sets.loadError'))
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
     return () => {
       cancelled = true
     }
-  }, [id, isNew, t])
+    // Deliberately *not* keyed on `t`.
+    //
+    // Switching language hands `useTranslation` a new `t`, which re-ran this
+    // effect, re-read the set from Firestore, and overwrote the form with the
+    // saved version — silently throwing away every unsaved edit. Worse, it
+    // reset the baseline too, so the unsaved-changes guard saw nothing amiss
+    // and never warned. This should run when the set being edited changes, and
+    // at no other time.
+  }, [id, isNew])
 
   function updateRow(index: number, patch: Partial<WordSetEntry>) {
     setRows((prev) => {
@@ -187,7 +204,7 @@ export function WordSetEditPage() {
   async function handleSave() {
     if (!user) return
     setBusy(true)
-    setError(null)
+    setErrorKey(null)
     try {
       if (isNew) await createWordSet(user.uid, name, rows, icon)
       else await updateWordSet(id!, name, rows, icon)
@@ -197,7 +214,7 @@ export function WordSetEditPage() {
       // edit-and-save left two entries behind to click through later.
       navigate('/sets', { replace: true })
     } catch {
-      setError(t('sets.saveError'))
+      setErrorKey('sets.saveError')
       setBusy(false)
     }
   }
@@ -298,9 +315,9 @@ export function WordSetEditPage() {
         {t('sets.blankHint')}
       </p>
 
-      {error && (
+      {errorKey && (
         <p className="mt-4 rounded-xl bg-accent-500/10 px-3 py-2 text-sm font-medium text-accent-600">
-          {error}
+          {t(errorKey)}
         </p>
       )}
 
