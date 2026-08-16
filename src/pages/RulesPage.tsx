@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { POINTS } from '../game/scoring'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
 
@@ -8,6 +9,33 @@ import { Button } from '../components/ui/Button'
  * using miniature versions of the real screens, so the rules are shown rather
  * than described.
  */
+
+/**
+ * What each scoring style pays, taken from the scoring module itself.
+ *
+ * Written out by hand once, these numbers went stale the first time the
+ * balance changed — a rules screen that lies is worse than no rules screen.
+ */
+const SCORING_STYLES = [
+  {
+    key: 'teamRace',
+    icon: '🏁',
+    crew: POINTS.crewInstantCatch,
+    imposter: POINTS.imposterPerRound,
+  },
+  {
+    key: 'survivors',
+    icon: '🛟',
+    crew: POINTS.survivorBonus,
+    imposter: POINTS.imposterPerCrewLost,
+  },
+  {
+    key: 'detective',
+    icon: '🔎',
+    crew: POINTS.detectivePerVote,
+    imposter: POINTS.imposterPerMissedVote,
+  },
+] as const
 
 function Card({ children }: { children: ReactNode }) {
   return (
@@ -190,9 +218,51 @@ export function RulesPage() {
               >
                 <span className="text-base">{p.character}</span>
                 <span className="flex-1 text-xs text-content">{p.name}</span>
-                <span className="text-xs font-black text-brand-600">+2</span>
+                <span className="text-xs font-black text-brand-600">
+                  +{POINTS.crewInstantCatch}
+                </span>
               </div>
             ))}
+          </div>
+        </Card>
+      ),
+    },
+    {
+      title: t('rules.scoreTitle'),
+      body: t('rules.scoreBody'),
+      visual: (
+        <Card>
+          <div className="flex flex-col gap-2">
+            {SCORING_STYLES.map(({ key, icon, crew, imposter }) => (
+              <div key={key} className="rounded-xl bg-surface p-2">
+                <div className="text-xs font-black text-content">
+                  {icon} {t(`create.scoring${key[0].toUpperCase()}${key.slice(1)}`)}
+                </div>
+                <div className="mt-1 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span aria-hidden>👥</span>
+                    <span className="flex-1 text-content-muted">
+                      {t(`rules.score.${key}Crew`)}
+                    </span>
+                    <span className="font-black text-brand-600">+{crew}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span aria-hidden>🕵️</span>
+                    <span className="flex-1 text-content-muted">
+                      {t(`rules.score.${key}Imposter`)}
+                    </span>
+                    <span className="font-black text-accent-600">+{imposter}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <p className="px-1 text-[11px] leading-snug text-content-muted">
+              {t('rules.score.always', {
+                missed: POINTS.imposterPerMissedVote,
+                escape: POINTS.imposterEscape,
+                guess: POINTS.guessBonus,
+              })}
+            </p>
           </div>
         </Card>
       ),

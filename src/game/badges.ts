@@ -96,20 +96,20 @@ function daysSince(s: Stats, nowMs: number): number {
  */
 export const TRACKS: TrackSpec[] = [
   // ---- Playing: showing up, and the luck of the draw. Bronze/silver only. ----
-  { key: 'played', icon: '🎲', group: 'playing', thresholds: [1, 25], metric: (s) => s.played },
-  { key: 'hosted', icon: '👑', group: 'playing', thresholds: [3, 15], metric: (s) => s.hosted },
+  { key: 'played', icon: '🎲', group: 'playing', thresholds: [1, 50], metric: (s) => s.played },
+  { key: 'hosted', icon: '👑', group: 'playing', thresholds: [5, 30], metric: (s) => s.hosted },
   {
     key: 'imposter',
     icon: '🕵️',
     group: 'playing',
-    thresholds: [5, 25],
+    thresholds: [8, 40],
     metric: (s) => s.asImposter,
   },
   {
     key: 'imposterRounds',
     icon: '🎖️',
     group: 'playing',
-    thresholds: [10, 40],
+    thresholds: [20, 80],
     metric: (s) => s.imposterRoundsSurvived,
   },
   {
@@ -123,21 +123,24 @@ export const TRACKS: TrackSpec[] = [
     key: 'explorer',
     icon: '🌈',
     group: 'playing',
-    thresholds: [3, 6],
+    // Above what one game can hand over. A single game contributes three tags
+    // at once — its mode, its scoring, its guess rule — so bronze at three was
+    // awarded for turning up, before anyone had explored anything.
+    thresholds: [6, 8],
     metric: (s) => (s.triedVariants ?? []).length,
   },
   {
     key: 'homemade',
     icon: '📝',
     group: 'playing',
-    thresholds: [1, 5],
+    thresholds: [3, 15],
     metric: (s) => s.customSetGames,
   },
   {
     key: 'fullHouse',
     icon: '🏠',
     group: 'playing',
-    thresholds: [1, 5],
+    thresholds: [3, 12],
     metric: (s) => s.fullHouses,
   },
   // Both of these are jokes about the randomiser, so they read the games-played
@@ -149,14 +152,14 @@ export const TRACKS: TrackSpec[] = [
     key: 'innocent',
     icon: '😇',
     group: 'playing',
-    thresholds: [15, 30],
+    thresholds: [20, 40],
     metric: (s) => (s.asImposter === 0 ? s.played : 0),
   },
   {
     key: 'marked',
     icon: '🎯',
     group: 'playing',
-    thresholds: [10, 20],
+    thresholds: [15, 30],
     metric: (s) => (s.played > 0 && s.asImposter / s.played > 0.4 ? s.played : 0),
   },
 
@@ -165,37 +168,42 @@ export const TRACKS: TrackSpec[] = [
     key: 'wins',
     icon: '🏆',
     group: 'skill',
-    thresholds: [5, 25],
+    thresholds: [10, 50],
     metric: (s) => s.won,
     streakKey: 'wins',
-    streakThresholds: [3, 5],
+    // Six and ten, not three and five. The crew win most games at most tables,
+    // so a five-win run was an ordinary first evening — which is how a
+    // platinum came home on the very first night anyone played.
+    streakThresholds: [6, 10],
   },
   {
     key: 'imposterWins',
     icon: '🎭',
     group: 'skill',
-    thresholds: [3, 10],
+    thresholds: [5, 15],
     metric: (s) => s.imposterWins,
     streakKey: 'imposterWins',
-    streakThresholds: [3, 5],
+    streakThresholds: [4, 7],
   },
   {
     key: 'survivor',
     icon: '🛡️',
     group: 'skill',
-    thresholds: [10, 40],
+    // Only one player goes out per round, so surviving is the common case and
+    // has to be counted in much bigger numbers to mean anything.
+    thresholds: [25, 75],
     metric: (s) => s.survived,
     streakKey: 'survivor',
-    streakThresholds: [3, 5],
+    streakThresholds: [8, 14],
   },
   {
     key: 'detective',
     icon: '🔎',
     group: 'skill',
-    thresholds: [10, 40],
+    thresholds: [20, 60],
     metric: (s) => s.detectiveGames,
     streakKey: 'detective',
-    streakThresholds: [3, 5],
+    streakThresholds: [6, 10],
   },
 
   // ---- Feats: rarer moments. ----
@@ -206,37 +214,37 @@ export const TRACKS: TrackSpec[] = [
     key: 'instantRead',
     icon: '⚡',
     group: 'feats',
-    thresholds: [5, 20],
+    thresholds: [10, 35],
     metric: (s) => s.instantReads,
     streakKey: 'instantRead',
-    streakThresholds: [5, 8],
+    streakThresholds: [6, 10],
   },
   {
     key: 'cleanSweep',
     icon: '🧹',
     group: 'feats',
-    thresholds: [5, 20],
+    thresholds: [10, 35],
     metric: (s) => s.cleanSweeps,
     streakKey: 'cleanSweep',
-    streakThresholds: [5, 8],
+    streakThresholds: [6, 10],
   },
   {
     key: 'houdini',
     icon: '🪄',
     group: 'feats',
-    thresholds: [5, 15],
+    thresholds: [8, 25],
     metric: (s) => s.houdinis,
     streakKey: 'houdini',
-    streakThresholds: [3, 5],
+    streakThresholds: [4, 7],
   },
   {
     key: 'invisible',
     icon: '👻',
     group: 'feats',
-    thresholds: [5, 20],
+    thresholds: [12, 40],
     metric: (s) => s.invisibles,
     streakKey: 'invisible',
-    streakThresholds: [3, 5],
+    streakThresholds: [5, 9],
   },
   // No streak: earning this at all needs the crew to catch you first, which
   // is their decision rather than yours, so a run of them would mostly
@@ -245,7 +253,7 @@ export const TRACKS: TrackSpec[] = [
     key: 'lastLaugh',
     icon: '😏',
     group: 'feats',
-    thresholds: [1, 3, 8, 15],
+    thresholds: [2, 6, 15, 30],
     metric: (s) => s.lastLaughs,
   },
   // Single-game peaks: a best is already a high-water mark, so it climbs on
@@ -254,14 +262,23 @@ export const TRACKS: TrackSpec[] = [
     key: 'bestGame',
     icon: '💎',
     group: 'feats',
-    thresholds: [4, 8, 12, 16],
+    // Re-cut for the scoring, not just made harder — twice, because the range
+    // moved twice. A crew member's best possible game is now 1 (or about 3
+    // under Detective); an imposter caught on the first vote takes ~2, one who
+    // survives a round ~9, and one who gets away with it entirely can pass 30.
+    // So bronze marks a good game whichever side you were on, and platinum
+    // means you got away with it.
+    thresholds: [4, 9, 16, 28],
     metric: (s) => s.bestGamePoints,
   },
   {
     key: 'marathon',
     icon: '⏱️',
     group: 'feats',
-    thresholds: [6, 10, 15],
+    // A game runs at most about one round per player above two, so fifteen was
+    // unreachable at any table this app allows. These are long games rather
+    // than impossible ones.
+    thresholds: [5, 8, 11],
     metric: (s) => s.longestGame,
   },
 ]

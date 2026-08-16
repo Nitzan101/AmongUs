@@ -785,7 +785,7 @@ export async function endBecauseImposterLeft(
   const round = game.round
   if (game.status !== 'playing' || !round) return
   if (round.phase === 'recap' || round.phase === 'result') return
-  await finalizeGame(pin, 'crew-wins', false, imposterId)
+  await finalizeGame(pin, 'crew-wins', false, imposterId, true)
 }
 
 /** True when this player holds the imposter's card. Reads only their own. */
@@ -870,7 +870,7 @@ export async function endIfTooFewAlive(pin: string): Promise<void> {
       // was eliminated: they walked. The seating still lists them, since it
       // records who the game was dealt to.
       const departed = await findImposter(pin, dealt)
-      await finalizeGame(pin, 'crew-wins', false, departed.id ?? undefined)
+      await finalizeGame(pin, 'crew-wins', false, departed.id ?? undefined, true)
       return
     }
   }
@@ -928,7 +928,17 @@ export async function startGame(pin: string): Promise<void> {
     seatOrder: game.seatOrder,
     prevGameNumber: game.gameNumber,
     setEntries,
+    usedWords: game.usedWords,
+    imposterAware: game.imposterAware,
   })
+
+  // Every word has been played. Rather than deal one the table already knows
+  // the answer to, the evening ends here — on the podium, which is a better
+  // last screen than a repeat anyway.
+  if (!assignment) {
+    await updateDoc(gameRef(pin), { status: 'finished', round: null })
+    return
+  }
 
   await clearVotes(pin)
   await clearClues(pin)
@@ -964,6 +974,7 @@ export async function startGame(pin: string): Promise<void> {
     seatOrder: assignment.seatOrder,
     seatNames,
     gameNumber: assignment.gameNumber,
+    usedWords: [...(game.usedWords ?? []), assignment.mainWord],
     wordSetName,
     ...(wordSetGone
       ? {
@@ -1250,9 +1261,23 @@ export async function continueAfterReveal(pin: string): Promise<void> {
       await finalizeGame(pin, 'crew-wins', false)
     }
   } else if (newAlive.length <= 2) {
-    // Imposter has reached the final two → auto-win.
-    await updateDoc(gameRef(pin), { 'round.aliveIds': newAlive })
-    await finalizeGame(pin, 'imposter-wins', false)
+    // Imposter has reached the final two → they've won. They still get to name
+    // the word: winning is no reason to be denied the best part of the round,
+    // and a correct guess is worth points on top.
+    if (game.guess !== 'off') {
+      await updateDoc(gameRef(pin), {
+        'round.phase': 'guess',
+        'round.aliveIds': newAlive,
+        'round.imposterWon': true,
+        'round.eliminatedId': null,
+        'round.eliminatedRole': null,
+        'round.guessText': null,
+        'round.guessCorrect': null,
+      })
+    } else {
+      await updateDoc(gameRef(pin), { 'round.aliveIds': newAlive })
+      await finalizeGame(pin, 'imposter-wins', false)
+    }
   } else {
     await updateDoc(gameRef(pin), {
       'round.phase': 'clues',
@@ -1267,16 +1292,47 @@ export async function continueAfterReveal(pin: string): Promise<void> {
   }
 }
 
-/** The caught imposter submits their guess at the main word. */
+/** The imposter submits their guess at the main word. */
 export async function castGuess(pin: string, text: string): Promise<void> {
   requireDb()
   await updateDoc(gameRef(pin), { 'round.guessText': text })
 }
 
+/**
+ * Who won, once the guess is out of the way.
+ *
+ * The guess phase is reached two ways now — caught, or having reached the
+ * final two — and only the round knows which. Reading it wrong would hand the
+ * game to the wrong side after a correct guess.
+ */
+function outcomeAfterGuess(round: Round): Outcome {
+  return round.imposterWon ? 'imposter-wins' : 'crew-wins'
+}
+
+/**
+ * The crew's word, read off any crew member's card (host only).
+ *
+ * Picking "the first seat that isn't the eliminated player" worked while the
+ * only way here was being caught. A winning imposter is nobody's elimination,
+ * so that could land on the imposter's own card — comparing the guess against
+ * the word they were already holding.
+ */
+async function readMainWord(pin: string, ids: string[]): Promise<string> {
+  for (const id of ids) {
+    const snap = await getDoc(secretRef(pin, id)).catch(() => null)
+    if (!snap?.exists()) continue
+    const secret = snap.data() as Secret
+    if (secret.role === 'crew') return secret.word
+  }
+  return ''
+}
+
 /** Host override: move on without waiting for the guess (counts as wrong). */
 export async function skipGuess(pin: string): Promise<void> {
   requireDb()
-  await finalizeGame(pin, 'crew-wins', false)
+  const loaded = await loadRound(pin)
+  if (!loaded) return
+  await finalizeGame(pin, outcomeAfterGuess(loaded.round), false)
 }
 
 /**
@@ -1289,14 +1345,10 @@ export async function resolveGuess(pin: string): Promise<void> {
   const loaded = await loadRound(pin)
   if (!loaded) return
   const { game, round } = loaded
-  const imposterId = round.eliminatedId ?? ''
-  const crewId =
-    (game.seatOrder ?? round.aliveIds).find((id) => id !== imposterId) ?? ''
-  const crewSecret = await getDoc(secretRef(pin, crewId))
-  const mainWord = crewSecret.exists() ? (crewSecret.data() as Secret).word : ''
+  const mainWord = await readMainWord(pin, game.seatOrder ?? round.turnOrder)
 
   if (isCloseMatch(round.guessText ?? '', mainWord)) {
-    await finalizeGame(pin, 'crew-wins', true)
+    await finalizeGame(pin, outcomeAfterGuess(round), true)
     return
   }
   await updateDoc(gameRef(pin), { 'round.guessNeedsReview': true })
@@ -1308,7 +1360,9 @@ export async function resolveGuessReview(
   correct: boolean,
 ): Promise<void> {
   requireDb()
-  await finalizeGame(pin, 'crew-wins', correct)
+  const loaded = await loadRound(pin)
+  if (!loaded) return
+  await finalizeGame(pin, outcomeAfterGuess(loaded.round), correct)
 }
 
 /** Move from the round recap to the cumulative scoreboard (host). */
@@ -1329,6 +1383,15 @@ async function finalizeGame(
    * elimination, and scoring with an empty id crashed.
    */
   imposterIdOverride?: string,
+  /**
+   * The game is ending because the imposter walked out, so they earn nothing
+   * for it. Kept separate from the override above: that one only says "the id
+   * came from somewhere other than the elimination", which is also true of an
+   * imposter who legitimately reached the final two after other people left —
+   * and reading the two as the same thing quietly refused that player every
+   * point they had actually earned.
+   */
+  imposterLeft = false,
 ): Promise<void> {
   requireDb()
   const loaded = await loadRound(pin)
@@ -1356,16 +1419,35 @@ async function finalizeGame(
     (outcome === 'crew-wins'
       ? (round.eliminatedId ?? '')
       : ((await findImposter(pin, round.aliveIds)).id ?? ''))
-  const crewId = playerIds.find((id) => id !== imposterId) ?? playerIds[0]
   // Reading someone else's secret is a host-only right, and this no longer
   // runs only on the host: an imposter walking out ends the game from their
   // own device. Losing the word for the reveal is a poor trade against the
   // game never ending at all, so a refusal here costs the reveal, not the
   // ending. The round keeps whatever it already had.
-  const crewSecret = await getDoc(secretRef(pin, crewId)).catch(() => null)
-  const mainWord = crewSecret?.exists()
-    ? (crewSecret.data() as Secret).word
-    : (round.mainWord ?? '')
+  const mainWord =
+    (await readMainWord(pin, playerIds)) || (round.mainWord ?? '')
+
+  // Rounds the imposter got through without being voted out — the whole of
+  // their score now. Caught in round 1 is none; reaching the final two in
+  // round 3 is all three. An imposter who *walked out* gets nothing: the
+  // override is only ever passed for that case, and leaving is not surviving.
+  const roundsSurvived = imposterLeft
+    ? 0
+    : outcome === 'crew-wins'
+      ? Math.max(0, round.number - 1)
+      : round.number
+
+  // Crew voted out along the way, for the Survivors preset. Everyone dealt in,
+  // less everyone still standing, less the imposter themselves when they were
+  // the one just caught. Clamped, and zero for an imposter who walked out.
+  const crewEliminated = imposterLeft
+    ? 0
+    : Math.max(
+        0,
+        playerIds.length -
+          round.aliveIds.length -
+          (outcome === 'crew-wins' ? 1 : 0),
+      )
 
   const scoreLines = computeScores({
     preset: game.scoring,
@@ -1376,6 +1458,8 @@ async function finalizeGame(
     guessRule: game.guess,
     guessCorrect,
     voteHistory: round.voteHistory ?? [],
+    roundsSurvived,
+    crewEliminated,
   })
 
   // Only the round is written here — not everyone's scores.
@@ -1409,6 +1493,8 @@ export async function applyMyScore(
   uid: string,
   gameNumber: number,
   delta: number,
+  /** Whether this player's side won, counted for the podium's tie-break. */
+  won = false,
 ): Promise<void> {
   requireDb()
   const key = `${pin}:${gameNumber}`
@@ -1419,7 +1505,43 @@ export async function applyMyScore(
   await updateDoc(ref, {
     scoredGame: key,
     ...(delta ? { score: increment(delta) } : {}),
+    ...(won ? { wins: increment(1) } : {}),
   })
+}
+
+/**
+ * Abandon the running game without scoring it (host).
+ *
+ * For the round that stops being a game — someone has to leave, the words were
+ * a bad draw, the table has lost interest. It returns to the lobby with no
+ * points awarded and nothing recorded against anyone's stats, because no game
+ * really happened. The words that were dealt still count as used: they were
+ * seen, and dealing them again would be a repeat.
+ */
+export async function skipGame(pin: string): Promise<void> {
+  requireDb()
+  await clearVotes(pin)
+  await clearClues(pin)
+  await updateDoc(gameRef(pin), { status: 'lobby', round: null })
+}
+
+/**
+ * End the evening (host): the room stops on its podium.
+ *
+ * Deliberately not the same as closing the room, which deletes everything and
+ * throws everyone out. Here the scores stay up so people can look at them.
+ */
+export async function finishRoom(pin: string): Promise<void> {
+  requireDb()
+  await clearVotes(pin)
+  await clearClues(pin)
+  await updateDoc(gameRef(pin), { status: 'finished', round: null })
+}
+
+/** Reopen a finished room for more games (host). */
+export async function reopenRoom(pin: string): Promise<void> {
+  requireDb()
+  await updateDoc(gameRef(pin), { status: 'lobby', round: null })
 }
 
 /** Return the room to the lobby for another game (host). */

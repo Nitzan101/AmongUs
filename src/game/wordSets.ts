@@ -158,21 +158,26 @@ function randomItem<T>(items: T[]): T {
 }
 
 /**
- * Deal from a custom set. A filled `confusing` is used as written; a blank one
- * is replaced by another entry's main word, so the imposter still gets
- * something on-theme rather than a word from the generic bank.
+ * Deal from a custom set, skipping anything this room has already used.
+ *
+ * A filled `confusing` is used as written. A blank one now means **no word for
+ * the imposter at all**, rather than borrowing another entry's main word. That
+ * borrowing was a poor guess at what the author wanted: it handed the imposter
+ * a word that was itself somebody's answer, so it could later come up as the
+ * real one, and it quietly turned "I didn't write a pair for this" into "give
+ * them this unrelated thing". Leaving it blank now means what it looks like —
+ * the imposter is told they're the imposter and works the rest out.
+ *
+ * Returns null once every entry has been played, which ends the room.
  */
-export function pickWordsFromSet(entries: WordSetEntry[]): WordAssignment {
-  const usable = cleanEntries(entries)
+export function pickWordsFromSet(
+  entries: WordSetEntry[],
+  exclude: ReadonlySet<string> = new Set(),
+): WordAssignment | null {
+  const usable = cleanEntries(entries).filter((e) => !exclude.has(e.main))
+  if (usable.length === 0) return null
   const entry = randomItem(usable)
-  const main = entry.main
-  if (entry.confusing) return { main, confusing: entry.confusing }
-
-  const others = usable.filter((e) => e.main !== main)
-  return {
-    main,
-    confusing: others.length > 0 ? randomItem(others).main : main,
-  }
+  return { main: entry.main, confusing: entry.confusing ?? '' }
 }
 
 /**

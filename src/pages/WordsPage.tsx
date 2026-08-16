@@ -21,7 +21,11 @@ export function WordsPage() {
   } | null>(null)
 
   function roll(difficulty: Difficulty) {
-    setExample({ difficulty, words: pickWords(language, difficulty) })
+    // Nothing is excluded here, so the bank can never come back empty — but
+    // the type says it might, and rolling a sample is not worth a crash if
+    // that ever stops being true.
+    const words = pickWords(language, difficulty)
+    if (words) setExample({ difficulty, words })
   }
 
   return (
@@ -57,8 +61,16 @@ export function WordsPage() {
             <div className="text-xs font-bold uppercase text-content-muted">
               {t('words.imposterGets')} · {t(`words.${example.difficulty}`)}
             </div>
-            <div className="text-lg font-black text-content">
-              {example.words.confusing}
+            {/* Hard gives the imposter nothing at all, so the sample has to
+                be able to show that rather than an empty box. */}
+            <div
+              dir="auto"
+              className={
+                'text-lg font-black ' +
+                (example.words.confusing ? 'text-content' : 'text-content-muted')
+              }
+            >
+              {example.words.confusing || t('words.imposterGetsNothing')}
             </div>
           </div>
         </div>

@@ -31,7 +31,9 @@ import {
 import { useWordSetById } from '../game/wordSets'
 import { GameClosedScreen } from '../components/GameClosedScreen'
 import { GameHeaderBar } from '../components/GameHeaderBar'
+import { HostGameControls } from '../components/HostGameControls'
 import { HostPlayerManager } from '../components/HostPlayerManager'
+import { Podium } from '../components/Podium'
 import { useGameClosed } from '../game/useGameClosed'
 import { recordGameResult, type GameResult } from '../game/stats'
 import { colorForBadge, diffBadges, type BadgeDelta } from '../game/badges'
@@ -116,20 +118,35 @@ function WordCard({
           <div className="mt-1 text-lg font-black text-accent-600">
             {t('game.imposterTitle')}
           </div>
-          <div className="mt-3 text-xs font-bold uppercase text-content-muted">
-            {t('game.yourWord')}
-          </div>
-          <div className="text-3xl font-black text-content">{secret.word}</div>
-          <div className="mt-2 text-sm text-content-muted">
-            {t('game.imposterHint')}
-          </div>
+          {/* On hard — and on a custom set whose author left the pair blank —
+              there is no word at all. Nothing to show, and nothing to hide
+              behind: the clue has to be built out of what everyone else says. */}
+          {secret.word ? (
+            <>
+              <div className="mt-3 text-xs font-bold uppercase text-content-muted">
+                {t('game.yourWord')}
+              </div>
+              <div dir="auto" className="text-3xl font-black text-content">
+                {secret.word}
+              </div>
+              <div className="mt-2 text-sm text-content-muted">
+                {t('game.imposterHint')}
+              </div>
+            </>
+          ) : (
+            <div className="mt-3 text-sm text-content-muted">
+              {t('game.imposterNoWordHint')}
+            </div>
+          )}
         </>
       ) : (
         <>
           <div className="text-xs font-bold uppercase text-content-muted">
             {t('game.yourWord')}
           </div>
-          <div className="text-4xl font-black text-content">{secret.word}</div>
+          <div dir="auto" className="text-4xl font-black text-content">
+            {secret.word}
+          </div>
           <div className="mt-2 text-sm text-content-muted">
             {t('game.crewHint')}
           </div>
@@ -812,18 +829,29 @@ function RevealPhase({
 function GuessPhase({
   pin,
   round,
+  byId,
+  seatNames,
   secret,
   isHost,
+  isFullVirtual,
+  clues,
 }: {
   pin: string
   round: Round
+  byId: PlayerMap
+  seatNames?: Record<string, SeatName> | null
   secret: Secret | null
   isHost: boolean
+  isFullVirtual: boolean
+  clues: Clue[]
 }) {
   const { t } = useTranslation()
   const [guess, setGuess] = useState('')
   const amImposter = secret?.role === 'imposter'
   const submitted = round.guessText != null
+  // Reached by winning rather than by being caught, which changes what the
+  // screen should say — and means nobody is waiting to find out who it was.
+  const won = round.imposterWon === true
 
   if (round.guessNeedsReview) {
     return (
@@ -864,17 +892,38 @@ function GuessPhase({
   if (amImposter && !submitted) {
     return (
       <div className="flex flex-1 flex-col">
-        <div className="text-6xl">🎯</div>
+        <div className="text-6xl">{won ? '😈' : '🎯'}</div>
         <h1 className="mt-2 text-2xl font-black text-content">
-          {t('game.guessTitle')}
+          {won ? t('game.guessWonTitle') : t('game.guessTitle')}
         </h1>
-        <p className="mt-1 text-content-muted">{t('game.guessHint')}</p>
+        <p className="mt-1 text-content-muted">
+          {won ? t('game.guessWonHint') : t('game.guessHint')}
+        </p>
         <input
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
           placeholder={t('game.guessPlaceholder')}
           className="mt-4 w-full rounded-2xl border-2 border-line bg-surface-raised px-4 py-3 text-lg text-content outline-none focus:border-brand-500"
         />
+
+        {/* The words everyone said, right where the guess is made. The whole
+            point of typing them was that they can be read back — and this is
+            the one moment they matter most. */}
+        {isFullVirtual && clues.length > 0 && (
+          <div className="mt-4">
+            <h2 className="px-1 text-sm font-bold uppercase tracking-wide text-content-muted">
+              {t('game.wordsSaid')}
+            </h2>
+            <div className="mt-2">
+              <ClueFeed
+                clues={clues}
+                byId={byId}
+                seatNames={seatNames}
+                currentRound={round.number}
+              />
+            </div>
+          </div>
+        )}
         <div className="mt-auto pt-8">
           <Button
             size="lg"
@@ -1067,8 +1116,10 @@ function RecapPhase({
           <p
             className={
               'rounded-full px-3 py-1 text-sm font-bold ' +
+              // Green. It was showing the app's error colour for the one
+              // thing on the screen that had gone right for the imposter.
               (round.guessCorrect
-                ? 'bg-accent-500/15 text-accent-600'
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
                 : 'bg-surface-raised text-content-muted')
             }
           >
@@ -1312,6 +1363,8 @@ export function GamePage() {
     } else if (game.status === 'lobby') {
       navigate(`/lobby/${pin}`, { replace: true })
     }
+    // 'finished' deliberately stays put: the podium is shown right here rather
+    // than bouncing everyone somewhere else the moment the evening ends.
   }, [loading, game, pin, navigate, closed])
 
   // Kicked mid-game → forget it and bounce out to the lobby.
@@ -1452,8 +1505,11 @@ export function GamePage() {
     if (round.phase !== 'recap' && round.phase !== 'result') return
     const line = round.scoreBreakdown?.[user.uid]
     if (!line) return
-    applyMyScore(pin, user.uid, game.gameNumber ?? 1, line.delta).catch((e) =>
-      console.error('applyMyScore failed', e),
+    const iWon =
+      round.outcome ===
+      (round.imposterId === user.uid ? 'imposter-wins' : 'crew-wins')
+    applyMyScore(pin, user.uid, game.gameNumber ?? 1, line.delta, iWon).catch(
+      (e) => console.error('applyMyScore failed', e),
     )
   }, [me, user, game, round, pin])
 
@@ -1493,6 +1549,14 @@ export function GamePage() {
   // Checked before the loading state: once the room is gone there is nothing
   // left to wait for, and a spinner would be the wrong thing to show.
   if (closed) return <GameClosedScreen />
+
+  if (!loading && game?.status === 'finished') {
+    return (
+      <div className="flex flex-1 flex-col pb-4">
+        <Podium players={players} />
+      </div>
+    )
+  }
 
   if (loading || !game || !round) {
     return (
@@ -1552,7 +1616,16 @@ export function GamePage() {
       break
     case 'guess':
       phaseView = (
-        <GuessPhase pin={pin} round={round} secret={secret} isHost={isHost} />
+        <GuessPhase
+          pin={pin}
+          round={round}
+          byId={byId}
+          seatNames={game.seatNames}
+          secret={secret}
+          isHost={isHost}
+          isFullVirtual={isFullVirtual}
+          clues={clues}
+        />
       )
       break
     case 'recap':
@@ -1590,6 +1663,7 @@ export function GamePage() {
       {/* Available in every phase: the host shouldn't have to wait for the
           round to end to remove a player whose phone died. */}
       {isHost && <HostPlayerManager pin={pin} players={players} uid={uid} />}
+      {isHost && <HostGameControls pin={pin} />}
 
       <button
         type="button"

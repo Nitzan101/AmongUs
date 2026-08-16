@@ -26,6 +26,15 @@ export function countWords(language: Language): number {
 /** The words a single game hands out. */
 export interface WordAssignment {
   main: string
+  /**
+   * The imposter's word — empty when they are given none at all.
+   *
+   * On hard the imposter is told they are the imposter and nothing else. A
+   * word from an unrelated category was never much of a disguise: saying
+   * something vaguely about "hammer" while the table discusses a beach holiday
+   * gives you away on your first turn. With no word they have to build a clue
+   * out of what everyone else says, which is the game people actually wanted.
+   */
   confusing: string
 }
 
@@ -38,29 +47,52 @@ function randomItem<T>(items: T[]): T {
  * word is drawn live by distance so nothing is a fixed, memorizable mapping:
  * - easy:   another word from the same cluster.
  * - medium: a word from a different cluster in the same category.
- * - hard:   a word from a different category.
+ * - hard:   no word at all — see `WordAssignment.confusing`.
+ *
+ * `exclude` holds the main words this room has already used, so no word comes
+ * round twice in one evening. Returns null when every word in the bank has
+ * been played, which is the room's cue to finish rather than repeat itself.
  */
 export function pickWords(
   language: Language,
   difficulty: Difficulty,
-): WordAssignment {
+  exclude: ReadonlySet<string> = new Set(),
+): WordAssignment | null {
   const categories = getCategories(language)
-  const category = randomItem(categories)
+  // Only clusters that still have something unplayed in them, so the random
+  // walk down category → cluster → word can't dead-end on an exhausted branch.
+  const available = categories
+    .map((c) => ({
+      ...c,
+      clusters: c.clusters.filter((cl) => cl.some((w) => !exclude.has(w))),
+    }))
+    .filter((c) => c.clusters.length > 0)
+  if (available.length === 0) return null
+
+  const category = randomItem(available)
   const cluster = randomItem(category.clusters)
-  const main = randomItem(cluster)
+  const main = randomItem(cluster.filter((w) => !exclude.has(w)))
+
+  // Hard hands over nothing, so there is no pool to draw from.
+  if (difficulty === 'hard') return { main, confusing: '' }
+
+  // The imposter's word may repeat freely: it is never said aloud as the
+  // answer, and restricting it too would shrink the pool for no gain.
+  const full = getCategories(language)
+  const ownCategory = full.find((c) => c.id === category.id) ?? category
+  const ownCluster =
+    ownCategory.clusters.find((cl) => cl.includes(main)) ?? cluster
 
   let pool: string[]
   if (difficulty === 'easy') {
-    pool = cluster.filter((w) => w !== main)
-  } else if (difficulty === 'medium') {
-    pool = category.clusters.filter((c) => c !== cluster).flat()
+    pool = ownCluster.filter((w) => w !== main)
   } else {
-    pool = categories.filter((c) => c !== category).flatMap((c) => c.clusters.flat())
+    pool = ownCategory.clusters.filter((c) => c !== ownCluster).flat()
   }
 
   // Fallbacks keep selection safe even if a bank ever violates the invariants.
   if (pool.length === 0) {
-    pool = categories.flatMap((c) => c.clusters.flat()).filter((w) => w !== main)
+    pool = full.flatMap((c) => c.clusters.flat()).filter((w) => w !== main)
   }
 
   return { main, confusing: randomItem(pool) }

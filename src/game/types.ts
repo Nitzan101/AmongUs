@@ -6,13 +6,13 @@ export type GameMode = 'half' | 'full'
 export type Scoring = 'teamRace' | 'survivors' | 'detective'
 export type GuessRule = 'final' | 'steal' | 'off'
 /**
- * A room is either waiting or playing. There is no third state: a finished
- * game returns to the lobby for the next one, and a room that is really over
- * is deleted. (An `'ended'` member lived here for a while that nothing ever
- * set and nothing ever checked — a state the code invited you to handle and
- * could never reach.)
+ * Waiting, playing, or done for the night.
+ *
+ * `finished` is the podium: the host has called it, or the word pool ran dry.
+ * The room stays alive so everyone can see where they came, and nobody is
+ * thrown back to the home screen the moment the last game ends.
  */
-export type GameStatus = 'lobby' | 'playing'
+export type GameStatus = 'lobby' | 'playing' | 'finished'
 
 /** The phase within an active game. */
 export type RoundPhase =
@@ -93,7 +93,13 @@ export interface Round {
    * round 1 doesn't leak into a split round 2. Feeds the "Clean Sweep" badge.
    */
   eliminationUnanimous?: boolean | null
-  /** The caught imposter's typed guess at the main word (guess phase). */
+  /**
+   * Set when the guess phase was reached by the imposter *winning* rather than
+   * being caught, so resolving the guess finalises the right outcome. Getting
+   * to the final two is not a reason to be denied the fun of naming the word.
+   */
+  imposterWon?: boolean | null
+  /** The imposter's typed guess at the main word (guess phase). */
   guessText?: string | null
   guessCorrect?: boolean | null
   /** True once a guess didn't auto-match and needs the host's Correct/Wrong call. */
@@ -163,6 +169,16 @@ export interface Game extends GameOptions {
    * list by anyone in the room.
    */
   seatNames?: Record<string, SeatName> | null
+  /**
+   * Every main word this room has already been dealt.
+   *
+   * A word coming round twice in one evening is the fastest way to spoil a
+   * game — whoever had it last time knows the answer, and the imposter who
+   * held its partner knows it too. Kept on the room rather than per player,
+   * because it is the room that must not repeat itself. When nothing is left
+   * unused the room finishes on the podium rather than dealing a repeat.
+   */
+  usedWords?: string[]
   /** Which game number this is in the room (rotates turn order, drives scoring). */
   gameNumber?: number
   /**
@@ -232,6 +248,12 @@ export interface Player {
    * twice. See `applyMyScore`.
    */
   scoredGame?: string
+  /**
+   * Games won in this room. Written alongside `score` by the player's own
+   * device, and used to break a tie on the podium — level on points, the one
+   * who won more often is placed higher.
+   */
+  wins?: number
 }
 
 /**

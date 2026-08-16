@@ -8,6 +8,8 @@ export interface Assignment {
   gameNumber: number
   turnOrder: string[]
   imposterId: string
+  /** The crew's word, so the room can record it as used and never deal it again. */
+  mainWord: string
   secrets: Record<string, Secret>
 }
 
@@ -50,6 +52,11 @@ export function reconcileSeatOrder(
  * - One random imposter gets the confusing word; everyone else gets the main word.
  * - Words come from a custom set when `setEntries` is given, otherwise from the
  *   built-in bank at the chosen difficulty.
+ * - `usedWords` are the main words this room has already played, so nothing
+ *   comes round twice.
+ *
+ * Returns null when there is no unused word left to deal — the room's cue to
+ * finish on the podium instead of repeating itself.
  */
 export function buildAssignment(
   playerIds: string[],
@@ -59,19 +66,46 @@ export function buildAssignment(
     seatOrder?: string[]
     prevGameNumber?: number
     setEntries?: WordSetEntry[]
+    usedWords?: string[]
+    /**
+     * False in the hidden-role variant, where nobody is told what they are.
+     *
+     * That mode needs the imposter to hold an ordinary-looking word — the
+     * whole point is that they give clues sincerely, not knowing theirs is the
+     * odd one out — so the "no word on hard" rule cannot apply to it. An empty
+     * card would announce their role more loudly than any word could.
+     */
+    imposterAware?: boolean
   },
-): Assignment {
+): Assignment | null {
   const seatOrder = reconcileSeatOrder(opts.seatOrder, playerIds)
   const gameNumber = (opts.prevGameNumber ?? 0) + 1
   const startIndex = (gameNumber - 1) % seatOrder.length
   const turnOrder = rotate(seatOrder, startIndex)
 
-  const imposterId = playerIds[Math.floor(Math.random() * playerIds.length)]
-  const { main, confusing } =
+  const used = new Set(opts.usedWords ?? [])
+  const hidden = opts.imposterAware === false
+  const picked =
     opts.setEntries && opts.setEntries.length > 0
-      ? pickWordsFromSet(opts.setEntries)
-      : pickWords(opts.language, opts.difficulty)
+      ? pickWordsFromSet(opts.setEntries, used)
+      : // Hidden-role always needs a word to hand over, so it deals at medium
+        // however the room is set. Nothing else about the deal changes.
+        pickWords(
+          opts.language,
+          hidden && opts.difficulty === 'hard' ? 'medium' : opts.difficulty,
+          used,
+        )
+  if (!picked) return null
 
+  const { main } = picked
+  // A custom set with no pair written for this entry leaves the imposter
+  // wordless too — except in hidden-role, which must have something to show.
+  const confusing =
+    hidden && !picked.confusing
+      ? (pickWords(opts.language, 'medium')?.confusing ?? main)
+      : picked.confusing
+
+  const imposterId = playerIds[Math.floor(Math.random() * playerIds.length)]
   const secrets: Record<string, Secret> = {}
   for (const id of playerIds) {
     secrets[id] =
@@ -80,5 +114,5 @@ export function buildAssignment(
         : { role: 'crew', word: main }
   }
 
-  return { seatOrder, gameNumber, turnOrder, imposterId, secrets }
+  return { seatOrder, gameNumber, turnOrder, imposterId, mainWord: main, secrets }
 }

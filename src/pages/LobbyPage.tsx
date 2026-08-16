@@ -11,10 +11,12 @@ import {
   leaveGame,
   MAX_PLAYERS,
   MIN_PLAYERS,
+  reopenRoom,
   startGame,
 } from '../game/gameService'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
 import { PlayerDepartures } from '../components/PlayerDepartures'
+import { Podium } from '../components/Podium'
 import { useBackGuard } from '../game/useBackGuard'
 import { report } from '../lib/reportError'
 import { shareLink } from '../lib/share'
@@ -117,6 +119,25 @@ export function LobbyPage() {
         <div className="text-6xl">👋</div>
         <h1 className="text-2xl font-black text-content">{t('lobby.notInGame')}</h1>
         <Button onClick={() => navigate(`/join/${pin}`)}>{t('join.submit')}</Button>
+      </div>
+    )
+  }
+
+  if (game.status === 'finished') {
+    return (
+      <div className="flex flex-1 flex-col pb-4">
+        <Podium players={players} />
+        {isHost && (
+          <div className="mt-auto pt-8">
+            <Button
+              variant="ghost"
+              fullWidth
+              onClick={() => reopenRoom(pin).catch(report('reopen the room'))}
+            >
+              {t('podium.playAgain')}
+            </Button>
+          </div>
+        )}
       </div>
     )
   }
