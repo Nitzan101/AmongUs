@@ -256,13 +256,27 @@ export function RulesPage() {
                 </div>
               </div>
             ))}
-            <p className="px-1 text-[11px] leading-snug text-content-muted">
-              {t('rules.score.always', {
-                missed: POINTS.imposterPerMissedVote,
-                escape: POINTS.imposterEscape,
-                guess: POINTS.guessBonus,
-              })}
-            </p>
+            {/* Three rows rather than one sentence listing three numbers:
+                read as prose it sounded like a pile of bonuses stacking up,
+                which is exactly what the cap above stops it being. */}
+            <div className="rounded-xl border border-dashed border-line p-2">
+              <div className="text-[11px] font-black text-content-muted">
+                {t('rules.score.alwaysTitle')}
+              </div>
+              {[
+                { icon: '🎭', key: 'missed', value: POINTS.imposterPerMissedVote },
+                { icon: '🏃', key: 'escape', value: POINTS.imposterEscape },
+                { icon: '💡', key: 'guess', value: POINTS.guessBonus },
+              ].map(({ icon, key, value }) => (
+                <div key={key} className="mt-1 flex items-center gap-2 text-[11px]">
+                  <span aria-hidden>{icon}</span>
+                  <span className="flex-1 text-content-muted">
+                    {t(`rules.score.always${key[0].toUpperCase()}${key.slice(1)}`)}
+                  </span>
+                  <span className="font-black text-accent-600">+{value}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       ),

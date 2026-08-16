@@ -358,7 +358,10 @@
       "survivorsImposter": "Each crew member voted out",
       "detectiveCrew": "Each vote you got right",
       "detectiveImposter": "Each vote you sent wrong",
-      "always": "In every style the imposter also scores +{{missed}} for every vote that missed them, +{{escape}} for getting away, and +{{guess}} for naming the real word."
+      "alwaysTitle": "The imposter always scores",
+      "alwaysMissed": "Each vote that missed them (one per player)",
+      "alwaysEscape": "Getting away with it",
+      "alwaysGuess": "Naming the real word"
     }
   },
   "auth": {

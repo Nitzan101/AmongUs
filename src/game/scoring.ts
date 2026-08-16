@@ -22,6 +22,13 @@ export const POINTS = {
    *
    * Their own vote doesn't count, and neither does a vote for them. This is
    * what makes a game they lose on the first vote still worth playing.
+   *
+   * **Capped at one per crew member** (see `computeScores`). Uncapped it grew
+   * with rounds *times* players, so it compounded with the per-round pay
+   * instead of complementing it: a long game paid 25 where an ordinary one
+   * paid 2, and a single lucky escape outweighed a whole evening of everyone
+   * else's play. Fooling the table once over is the achievement; fooling it
+   * five times running is mostly the table's doing.
    */
   imposterPerMissedVote: 1,
   /** Team Race: the imposter, per round they were not voted out in. */
@@ -124,10 +131,18 @@ export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> 
     imposterLine = lines[imposterId]
   }
 
-  /** Votes somebody else cast that landed on somebody other than the imposter. */
+  /**
+   * Votes somebody else cast that landed on somebody other than the imposter,
+   * counted at most once per crew member — one round of the whole table being
+   * wrong, however many rounds it actually took.
+   */
   const missedVotes = imposterId
-    ? voteHistory.filter((v) => v.voter !== imposterId && v.target !== imposterId)
-        .length
+    ? Math.min(
+        voteHistory.filter(
+          (v) => v.voter !== imposterId && v.target !== imposterId,
+        ).length,
+        crewIds.length,
+      )
     : 0
 
   if (imposterLine) {
