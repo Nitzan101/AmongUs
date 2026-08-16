@@ -7,8 +7,21 @@ import type { Game, Player } from './types'
 export const HEARTBEAT_MS = 8000
 /** Miss this long and a player shows a "disconnected" tag to others. */
 export const STALE_AFTER_MS = 20000
-/** Miss this long as host and leadership migrates to another player. */
-export const HOST_STALE_AFTER_MS = 45000
+/**
+ * Miss this long as host and leadership migrates to another player.
+ *
+ * Two and a half minutes, not forty-five seconds. A phone locks after thirty,
+ * and a locked phone stops running the heartbeat entirely — so at the old
+ * threshold a host who put their phone in their pocket for a minute came back
+ * to find they were not the host any more. That is a normal thing to do at a
+ * party, and it should not cost you the room.
+ *
+ * The number this has to beat is "how long the table will sit waiting for a
+ * host who is never coming back", and a couple of minutes is well inside
+ * anyone's patience for that. It must stay in step with the same duration in
+ * `firestore.rules`, which is what actually permits the takeover.
+ */
+export const HOST_STALE_AFTER_MS = 150000
 
 /** A ticking clock so staleness re-renders even when Firestore data hasn't changed. */
 export function useNow(intervalMs = 5000): number {
@@ -84,7 +97,12 @@ export function usePresence(
       if (fresh.length === 0) return
       const candidate = fresh.reduce((a, b) => (a.id < b.id ? a : b))
       if (candidate.id === uid) {
-        promoteHost(pin, uid).catch(() => {})
+        // Logged, not swallowed. A refusal here leaves the table with a host
+        // who isn't there and no sign of why — the one failure that has to be
+        // findable afterwards.
+        promoteHost(pin, uid).catch((e) =>
+          console.error('taking over as host failed', e),
+        )
       }
     }, 10000)
     return () => clearInterval(id)

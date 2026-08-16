@@ -16,6 +16,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
@@ -74,10 +75,12 @@ async function seed({ hostLastSeen = 'fresh' } = {}) {
         voteHistory: [],
       },
     })
+    // Comfortably past the 150s the rules require before a takeover is
+    // allowed — in step with HOST_STALE_AFTER_MS in presence.ts.
     const seen =
       hostLastSeen === 'fresh'
         ? Timestamp.now()
-        : Timestamp.fromMillis(Date.now() - 120000)
+        : Timestamp.fromMillis(Date.now() - 300000)
     await setDoc(doc(db, 'games', PIN, 'players', HOST), {
       id: HOST, name: 'Host', character: '🦊', isHost: true, score: 0, lastSeen: seen,
     })
@@ -160,6 +163,38 @@ await check('non-player cannot join by writing a player doc for someone else',
   assertFails(setDoc(g(as(OUTSIDER), 'players', P2), { id: P2, name: 'x' })))
 await check('unauthenticated cannot read a game',
   assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'games', PIN))))
+
+console.log('\n--- Host migration at a full table ---')
+// Rules may only look up so many documents per request, and the promotion
+// batch used to write every player's `isHost` flag beside the game document.
+// At a big table that is a lot of lookups for one commit.
+for (const size of [3, 6, 9, 12]) {
+  await seed({ hostLastSeen: 'stale' })
+  const extras = []
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    for (let i = 0; i < size - 3; i++) {
+      const id = 'extra' + i
+      extras.push(id)
+      await setDoc(doc(db, 'games', PIN, 'players', id), {
+        id, name: id, character: '🐨', isHost: false, score: 0, lastSeen: Timestamp.now(),
+      })
+    }
+  })
+  const everyone = [HOST, P2, P3, ...extras]
+
+  // One client instance: a batch and its refs must come from the same one.
+  const mine = as(P2)
+  const wide = writeBatch(mine)
+  everyone.forEach((id) => wide.update(g(mine, 'players', id), { isHost: id === P2 }))
+  wide.update(g(mine), { hostId: P2 })
+  await check(size + ' players — promotion that writes every isHost flag',
+    assertSucceeds(wide.commit()))
+
+  await seed({ hostLastSeen: 'stale' })
+  await check(size + ' players — promotion that writes only hostId',
+    assertSucceeds(updateDoc(g(as(P2)), { hostId: P2 })))
+}
 
 console.log('\n--- Nickname claims ---')
 // The whole point of the claims collection: "is this name free?" has to be one

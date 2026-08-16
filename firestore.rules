@@ -53,7 +53,9 @@ service cloud.firestore {
       function hostAbsent() {
         return !exists(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId))
           || get(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId))
-               .data.lastSeen < request.time - duration.value(45, 's');
+               // In step with HOST_STALE_AFTER_MS in presence.ts. Long enough
+               // that a host whose phone locked in their pocket keeps the room.
+               .data.lastSeen < request.time - duration.value(150, 's');
       }
 
       allow read: if signedIn();

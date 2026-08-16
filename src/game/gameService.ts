@@ -711,22 +711,21 @@ export async function closeGame(pin: string): Promise<void> {
   forgetGame()
 }
 
-/** Hand leadership to another player (host migration). */
+/**
+ * Hand leadership to another player (host migration).
+ *
+ * One write, to the one field that decides anything. `games.hostId` is the
+ * host; every screen works that out for itself. This used to also stamp an
+ * `isHost` flag onto every player document in the same batch, which was a
+ * copy of the same fact in as many places as there were players — and any of
+ * them could end up disagreeing with it.
+ */
 export async function promoteHost(
   pin: string,
   newHostId: string,
 ): Promise<void> {
-  const { db } = requireDb()
-  const players = await getDocs(playersRef(pin))
-  const batch = writeBatch(db)
-  players.docs.forEach((d) => {
-    const shouldBeHost = d.id === newHostId
-    if ((d.data() as Player).isHost !== shouldBeHost) {
-      batch.update(d.ref, { isHost: shouldBeHost })
-    }
-  })
-  batch.update(gameRef(pin), { hostId: newHostId })
-  await batch.commit()
+  requireDb()
+  await updateDoc(gameRef(pin), { hostId: newHostId })
 }
 
 /** Drop a departed player from the active round so play can continue. */
@@ -1475,6 +1474,7 @@ async function finalizeGame(
     'round.imposterId': imposterId,
     'round.mainWord': mainWord,
     'round.guessCorrect': guessCorrect,
+    'round.imposterRounds': roundsSurvived,
     'round.scoreBreakdown': scoreLines,
   })
 }

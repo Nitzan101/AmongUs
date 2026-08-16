@@ -112,6 +112,13 @@ export interface Round {
   mainWord?: string | null
   /** This game's point breakdown, shown on the recap screen before the scoreboard. */
   scoreBreakdown?: Record<string, ScoreLineItem> | null
+  /**
+   * Rounds the imposter lasted, stamped when the game ends.
+   *
+   * Zero means they went out on the very first vote, which is the only crew
+   * win worth calling a win — the recap reads this to decide what to say.
+   */
+  imposterRounds?: number | null
 }
 
 /** A short, translatable explanation for part of a score change. */

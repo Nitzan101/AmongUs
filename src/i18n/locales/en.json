@@ -49,7 +49,7 @@
     "scoringSurvivors": "Survivors",
     "scoringSurvivorsDesc": "Crew still in the game when the imposter is caught score, however long it took.",
     "scoringDetective": "Detective",
-    "scoringDetectiveDesc": "Team Race, plus a point for every vote you cast at the real imposter.",
+    "scoringDetectiveDesc": "Crew score per vote they cast at the real imposter.",
     "guess": "If the imposter is caught",
     "guessFinal": "Final Guess",
     "guessFinalDesc": "The imposter may guess the word for bonus points — caught or not.",
@@ -253,6 +253,10 @@
     "caughtHint": "The crew caught the imposter. The game is over.",
     "notImposterHint": "The imposter is still among you. On to the next round.",
     "crewWins": "Crew wins!",
+    "caught1": "Imposter caught!",
+    "caught2": "Got them — in the end.",
+    "caught3": "Caught, eventually!",
+    "caught4": "They almost got away with it!",
     "imposterWins": "The imposter wins!",
     "theImposterWas": "The imposter was",
     "backToLobby": "Back to lobby",
@@ -291,7 +295,6 @@
       "guessSteal": "Stole the win with a correct guess",
       "guessStolen": "Win stolen by the imposter's guess",
       "caughtTooLate": "Caught, but not on the first vote",
-      "misdirected": "Sent {{count}} vote(s) the wrong way",
       "crewVotedOut": "{{count}} crew member(s) voted out",
       "neverSpottedThem": "Never voted for the imposter"
     },
@@ -358,10 +361,7 @@
       "survivorsImposter": "Each crew member voted out",
       "detectiveCrew": "Each vote you got right",
       "detectiveImposter": "Each vote you sent wrong",
-      "alwaysTitle": "The imposter always scores",
-      "alwaysMissed": "Each vote that missed them (one per player)",
-      "alwaysEscape": "Getting away with it",
-      "alwaysGuess": "Naming the real word"
+      "alwaysGuess": "The imposter also scores for naming the real word"
     }
   },
   "auth": {

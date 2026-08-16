@@ -175,9 +175,12 @@ export function LobbyPage() {
     kickPlayer(pin, player.id).catch(report('remove that player'))
   }
 
+  // Who is host is `game.hostId` and nothing else — never a flag stored on
+  // the player, which could be left saying something different.
+  const hostOf = (p: Player) => p.id === game.hostId
   // Sort so the host shows first, then by join order isn't tracked — keep stable by name.
   const sorted = [...players].sort((a, b) =>
-    a.isHost === b.isHost ? a.name.localeCompare(b.name) : a.isHost ? -1 : 1,
+    hostOf(a) === hostOf(b) ? a.name.localeCompare(b.name) : hostOf(a) ? -1 : 1,
   )
 
   return (
@@ -291,7 +294,7 @@ export function LobbyPage() {
                 {t('lobby.disconnected')}
               </span>
             )}
-            {p.isHost && (
+            {hostOf(p) && (
               <span className="rounded-full bg-sunny-400/20 px-2 py-0.5 text-xs font-bold text-sunny-500">
                 {t('lobby.host')}
               </span>
@@ -299,7 +302,7 @@ export function LobbyPage() {
             {/* Ask first, as the in-game version already does. This is a bare
                 ✕ sitting beside every name on a phone, and removing someone
                 cannot be undone — they have to be sent the link again. */}
-            {isHost && !p.isHost && (
+            {isHost && !hostOf(p) && (
               <button
                 type="button"
                 onClick={() => handleKick(p)}

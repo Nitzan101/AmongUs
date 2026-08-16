@@ -3,40 +3,20 @@ import type { GuessRule, Outcome, ScoreLineItem, Scoring, Vote } from './types'
 /**
  * Every number the scoring is made of, in one place.
  *
- * Two things shape it, both learned by playing rather than guessed.
+ * The crew were paid far too much and too easily, so they now score for one
+ * thing per style, worth one point, instead of a handful every game. The
+ * imposter is paid for lasting: the rounds they were not voted out in.
  *
- * **The crew were paid far too much, and too easily.** They now score for one
- * thing per preset, worth one point, instead of a handful every game.
- *
- * **The imposter is caught on the very first vote most of the time.** At a
- * table of six that is roughly four games in five — so paying them only for
- * surviving rounds paid them almost nothing, however high the rate went.
- * Raising it to sixteen a round would barely have reached parity. What fires
- * in *every* game, including the ones they lose immediately, is the votes they
- * sent the wrong way: that is the imposter's actual craft, and it is now their
- * base pay under every preset.
+ * Deliberately small and few. An earlier version paid the imposter for every
+ * vote they sent the wrong way as well, which read as a pile of bonuses
+ * stacking up and made a long game worth ten ordinary ones. Being hard to
+ * catch is the whole job, and surviving a round already measures it.
  */
 export const POINTS = {
-  /**
-   * The imposter, per vote that landed on somebody innocent — in any preset.
-   *
-   * Their own vote doesn't count, and neither does a vote for them. This is
-   * what makes a game they lose on the first vote still worth playing.
-   *
-   * **Capped at one per crew member** (see `computeScores`). Uncapped it grew
-   * with rounds *times* players, so it compounded with the per-round pay
-   * instead of complementing it: a long game paid 25 where an ordinary one
-   * paid 2, and a single lucky escape outweighed a whole evening of everyone
-   * else's play. Fooling the table once over is the achievement; fooling it
-   * five times running is mostly the table's doing.
-   */
-  imposterPerMissedVote: 1,
-  /** Team Race: the imposter, per round they were not voted out in. */
+  /** Team Race and Detective: the imposter, per round they survived uncaught. */
   imposterPerRound: 3,
   /** Survivors: the imposter, per crew member voted out along the way. */
   imposterPerCrewLost: 3,
-  /** The imposter, on top, for actually getting away with it. */
-  imposterEscape: 3,
   /** Team Race: each crew member, and only on a first-vote catch. */
   crewInstantCatch: 1,
   /** Survivors: each crew member still standing when the imposter falls. */
@@ -63,9 +43,9 @@ export interface ScoreInput {
   /** Every vote cast this game — the Detective bonus and misdirection pay. */
   voteHistory: Vote[]
   /**
-   * Rounds the imposter got through without being voted out. Zero when caught
-   * on the first vote, and zero when the game ended because they walked out,
-   * which earns nothing.
+   * Rounds the imposter got through without being voted out — the whole of
+   * their score under Team Race and Detective. Zero when caught on the first
+   * vote, and zero when the game ended because they walked out.
    */
   roundsSurvived: number
   /** Crew members voted out along the way. Zero for an imposter who walked out. */
@@ -87,10 +67,9 @@ export interface ScoreInput {
  * - **Survivors** — attrition. Crew score for still being in the game when the
  *   imposter falls; the imposter scores for every crew member who doesn't.
  * - **Detective** — accuracy. Crew score per vote they cast at the real
- *   imposter; the imposter, per vote they sent elsewhere. Nothing else counts.
+ *   imposter; the imposter still scores by the round.
  *
- * Underneath all three, the imposter is paid for misdirection, and a correct
- * guess pays whoever made it.
+ * A correct guess at the real word pays on top, whoever won.
  */
 export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> {
   const {
@@ -131,29 +110,8 @@ export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> 
     imposterLine = lines[imposterId]
   }
 
-  /**
-   * Votes somebody else cast that landed on somebody other than the imposter,
-   * counted at most once per crew member — one round of the whole table being
-   * wrong, however many rounds it actually took.
-   */
-  const missedVotes = imposterId
-    ? Math.min(
-        voteHistory.filter(
-          (v) => v.voter !== imposterId && v.target !== imposterId,
-        ).length,
-        crewIds.length,
-      )
-    : 0
-
   if (imposterLine) {
-    if (missedVotes > 0) {
-      imposterLine.delta += POINTS.imposterPerMissedVote * missedVotes
-      imposterLine.reasons.push({
-        key: 'misdirected',
-        params: { count: missedVotes },
-      })
-    }
-    if (preset === 'teamRace' && roundsSurvived > 0) {
+    if (preset !== 'survivors' && roundsSurvived > 0) {
       imposterLine.delta += POINTS.imposterPerRound * roundsSurvived
       imposterLine.reasons.push({
         key: 'survivedRounds',
@@ -167,12 +125,9 @@ export function computeScores(input: ScoreInput): Record<string, ScoreLineItem> 
         params: { count: crewEliminated },
       })
     }
-    if (!crewWins) {
-      imposterLine.delta += POINTS.imposterEscape
-      imposterLine.reasons.push({ key: 'imposterEscaped' })
-    }
-    // Caught at once, with nobody fooled on the way. Every line needs a
-    // reason, or the recap shows a number with no explanation beside it.
+    if (!crewWins) imposterLine.reasons.push({ key: 'imposterEscaped' })
+    // Every line needs a reason, or the recap shows a number with nothing
+    // beside it to explain where it came from.
     if (imposterLine.reasons.length === 0) {
       imposterLine.reasons.push({ key: 'caughtImmediately' })
     }

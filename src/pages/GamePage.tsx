@@ -1053,6 +1053,14 @@ function Confetti() {
   )
 }
 
+/**
+ * How many ways there are to say "you got them, eventually".
+ *
+ * Kept in i18n as `game.caught1`…`game.caughtN`; the round number picks one,
+ * so every device shows the same line and a run of games doesn't repeat it.
+ */
+const CAUGHT_LINES = 4
+
 function RecapPhase({
   pin,
   round,
@@ -1072,6 +1080,11 @@ function RecapPhase({
   const { t } = useTranslation()
   const reducedMotion = usePrefersReducedMotion()
   const crewWon = round.outcome === 'crew-wins'
+  // "Crew wins" is for ending it on the first vote, and nothing else. Being
+  // fooled for two rounds and then getting there is catching the imposter, not
+  // winning — and calling it a win made every game read the same.
+  const cleanWin = crewWon && (round.imposterRounds ?? 0) === 0
+  const caughtLine = `game.caught${(round.number % CAUGHT_LINES) + 1}`
   // Fall back to the dealt roster. A game that ends *because* the imposter
   // walked out has no player document left to look them up in, so this line —
   // the one thing everyone is waiting for — simply vanished, and the recap
@@ -1085,16 +1098,20 @@ function RecapPhase({
   return (
     <div className="flex flex-1 flex-col pb-4">
       <div className="relative flex flex-col items-center gap-2 pt-2 text-center">
-        {crewWon && !reducedMotion && <Confetti />}
+        {cleanWin && !reducedMotion && <Confetti />}
         <div
           className={
             'text-6xl ' + (crewWon ? 'animate-pop-in' : 'animate-ominous-shake')
           }
         >
-          {crewWon ? '🎉' : '😈'}
+          {cleanWin ? '🎉' : crewWon ? '🕵️' : '😈'}
         </div>
         <h1 className="animate-pop-in text-3xl font-black text-content">
-          {crewWon ? t('game.crewWins') : t('game.imposterWins')}
+          {crewWon
+            ? cleanWin
+              ? t('game.crewWins')
+              : t(caughtLine)
+            : t('game.imposterWins')}
         </h1>
         {imposter && (
           <p className="text-content-muted">
