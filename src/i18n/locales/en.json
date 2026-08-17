@@ -140,6 +140,8 @@
     "nicknameLabel": "Your nickname",
     "nicknamePlaceholder": "e.g. Dana",
     "pickCharacter": "Pick your character",
+    "characterChange": "Change character",
+    "characterDone": "Pick one below",
     "submit": "Join",
     "joining": "Joining…",
     "checking": "Checking…",
