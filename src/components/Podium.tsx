@@ -45,10 +45,12 @@ export function Podium({
   const rest = ranked.slice(3)
 
   function playAgain() {
+    // Confirmed, because it wipes the board everyone is looking at.
+    if (!window.confirm(t('podium.confirmPlayAgain'))) return
     setBusy(true)
     reopenRoom(pin).catch((e) => {
       setBusy(false)
-      report('reopen the room')(e)
+      report('start again')(e)
     })
   }
 

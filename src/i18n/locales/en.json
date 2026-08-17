@@ -550,9 +550,10 @@
   "podium": {
     "title": "Final standings",
     "subtitle": "That is the evening. Well played.",
-    "playAgain": "Play more games",
+    "playAgain": "Play again",
     "closeRoom": "Close the room",
     "confirmClose": "Close the room for everyone? The scoreboard will be gone.",
-    "leave": "Back to the start"
+    "leave": "Back to the start",
+    "confirmPlayAgain": "Start again with everyone on zero? Tonight’s scores will be cleared."
   }
 }

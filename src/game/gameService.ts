@@ -1,6 +1,7 @@
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -1553,10 +1554,34 @@ export async function finishRoom(pin: string): Promise<void> {
   await updateDoc(gameRef(pin), { status: 'finished', round: null })
 }
 
-/** Reopen a finished room for more games (host). */
+/**
+ * Start a fresh evening in the same room (host), from the podium.
+ *
+ * Everything goes back to nothing: every score, every win, and the record of
+ * which words have been used. The podium was the end of that evening, so
+ * carrying its totals into the next one would make the next podium a
+ * continuation rather than a fresh result — and a room whose words had run out
+ * would finish again the moment anybody pressed Start.
+ *
+ * Playing on *without* finishing is still the way to keep a running total
+ * across many games; that is what Back to lobby has always done.
+ */
 export async function reopenRoom(pin: string): Promise<void> {
-  requireDb()
-  await updateDoc(gameRef(pin), { status: 'lobby', round: null })
+  const { db } = requireDb()
+  const players = await getDocs(playersRef(pin))
+  for (let i = 0; i < players.docs.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db)
+    players.docs.slice(i, i + BATCH_LIMIT).forEach((d) => {
+      batch.update(d.ref, { score: 0, wins: 0, scoredGame: deleteField() })
+    })
+    await batch.commit()
+  }
+  await updateDoc(gameRef(pin), {
+    status: 'lobby',
+    round: null,
+    usedWords: [],
+    gameNumber: 0,
+  })
 }
 
 /** Return the room to the lobby for another game (host). */
