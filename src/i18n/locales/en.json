@@ -258,6 +258,7 @@
     "caught3": "Caught, eventually!",
     "caught4": "They almost got away with it!",
     "imposterWins": "The imposter wins!",
+    "imposterHonour": "Fooled the whole table for {{count}} round(s)",
     "theImposterWas": "The imposter was",
     "backToLobby": "Back to lobby",
     "waitingHostNext": "Waiting for the host to continue…",

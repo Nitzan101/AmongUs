@@ -8,20 +8,17 @@ export const HEARTBEAT_MS = 8000
 /** Miss this long and a player shows a "disconnected" tag to others. */
 export const STALE_AFTER_MS = 20000
 /**
- * Miss this long as host and leadership migrates to another player.
+ * **Being quiet never costs you the room.**
  *
- * Two and a half minutes, not forty-five seconds. A phone locks after thirty,
- * and a locked phone stops running the heartbeat entirely — so at the old
- * threshold a host who put their phone in their pocket for a minute came back
- * to find they were not the host any more. That is a normal thing to do at a
- * party, and it should not cost you the room.
+ * There is deliberately no timeout here any more. Any threshold is the same
+ * bad bargain with a different number on it: sit still for longer than it and
+ * you lose the room you are running, which is a normal thing to do at a party
+ * — your phone locks, and a locked phone stops the heartbeat completely.
  *
- * The number this has to beat is "how long the table will sit waiting for a
- * host who is never coming back", and a couple of minutes is well inside
- * anyone's patience for that. It must stay in step with the same duration in
- * `firestore.rules`, which is what actually permits the takeover.
+ * Hosting changes for one reason only: the host is no longer in the room. They
+ * left and handed it on, or their player document is gone. That is what the
+ * check below waits for, and what `hostAbsent()` in the rules permits.
  */
-export const HOST_STALE_AFTER_MS = 150000
 
 /** A ticking clock so staleness re-renders even when Firestore data hasn't changed. */
 export function useNow(intervalMs = 5000): number {
@@ -44,10 +41,16 @@ export function isStale(
 }
 
 /**
- * Keep this player's presence alive, and — if the host has gone quiet for a
- * while — let the one deterministically-chosen backup player promote
- * themselves, so a vanished host (closed tab, dead battery) never freezes
- * the game for everyone else.
+ * Keep this player's presence alive, and make sure the room always has a host.
+ *
+ * The heartbeat drives the "disconnected" tag beside a player's name; it no
+ * longer decides who is in charge. A host who is asleep, out of signal, or in
+ * somebody's pocket is still the host when they come back.
+ *
+ * The takeover below is only for a room with *no* host at all — the host's
+ * player document has gone without leadership being handed on. That should not
+ * happen, since leaving passes the room on, but a delete that half-landed
+ * would otherwise leave a table nobody can start a game at.
  */
 export function usePresence(
   pin: string | undefined,
@@ -84,18 +87,21 @@ export function usePresence(
     if (!pin || !uid) return
     const id = setInterval(() => {
       const { game, players } = latest.current
-      if (!game) return
-      const now = Date.now()
-      const host = players.find((p) => p.id === game.hostId)
-      const hostStale = !host || isStale(host.lastSeen, now, HOST_STALE_AFTER_MS)
-      if (!hostStale) return
+      // Nothing to repair until the player list has actually arrived; an empty
+      // one during loading must not read as "the host has gone".
+      if (!game || players.length === 0) return
+      // The only thing that costs someone the room: not being in it.
+      if (players.some((p) => p.id === game.hostId)) return
 
-      // Deterministic so every client picks the same backup without racing.
-      const fresh = players.filter(
-        (p) => p.id !== game.hostId && !isStale(p.lastSeen, now, STALE_AFTER_MS),
+      // Deterministic so every client picks the same replacement without
+      // racing. Preferring someone whose app is awake, but taking anyone
+      // rather than leaving the table with no host at all.
+      const now = Date.now()
+      const awake = players.filter(
+        (p) => !isStale(p.lastSeen, now, STALE_AFTER_MS),
       )
-      if (fresh.length === 0) return
-      const candidate = fresh.reduce((a, b) => (a.id < b.id ? a : b))
+      const candidates = awake.length > 0 ? awake : players
+      const candidate = candidates.reduce((a, b) => (a.id < b.id ? a : b))
       if (candidate.id === uid) {
         // Logged, not swallowed. A refusal here leaves the table with a host
         // who isn't there and no sign of why — the one failure that has to be

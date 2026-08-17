@@ -258,6 +258,7 @@
     "caught3": "נתפס, אחרי כמה סיבובים!",
     "caught4": "עוד קצת והוא היה בורח!",
     "imposterWins": "המתחזה מנצח!",
+    "imposterHonour": "הוליך את כל השולחן שולל {{count}} סיבובים",
     "theImposterWas": "המתחזה היה",
     "backToLobby": "חזרה לחדר ההמתנה",
     "waitingHostNext": "מחכים שהמארח ימשיך…",

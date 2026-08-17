@@ -75,8 +75,8 @@ async function seed({ hostLastSeen = 'fresh' } = {}) {
         voteHistory: [],
       },
     })
-    // Comfortably past the 150s the rules require before a takeover is
-    // allowed — in step with HOST_STALE_AFTER_MS in presence.ts.
+    // "Stale" now only drives the disconnected tag — it is deliberately not
+    // enough to lose the room, which is what the migration tests check.
     const seen =
       hostLastSeen === 'fresh'
         ? Timestamp.now()
@@ -136,12 +136,20 @@ await check('anyone signed in creates a game',
   assertSucceeds(setDoc(doc(as(OUTSIDER), 'games', '999999'), { pin: '999999', hostId: OUTSIDER, status: 'lobby' })))
 
 console.log('\n--- Host migration ---')
-await seed({ hostLastSeen: 'stale' })
-await check('player takes over when host is stale',
-  assertSucceeds(updateDoc(g(as(P2)), { hostId: P2 })))
+// Being quiet must never cost the host the room, however long for.
 await seed({ hostLastSeen: 'fresh' })
-await check('player CANNOT take over while host is active',
+await check('player CANNOT take over while the host is active',
   assertFails(updateDoc(g(as(P2)), { hostId: P2 })))
+await seed({ hostLastSeen: 'stale' })
+await check('player CANNOT take over from a host who is merely quiet',
+  assertFails(updateDoc(g(as(P2)), { hostId: P2 })))
+// Leaving the room is the one thing that hands it on.
+await seed()
+await testEnv.withSecurityRulesDisabled(async (ctx) => {
+  await deleteDoc(doc(ctx.firestore(), 'games', PIN, 'players', HOST))
+})
+await check('player takes over once the host has left the room',
+  assertSucceeds(updateDoc(g(as(P2)), { hostId: P2 })))
 
 console.log('\n--- Things the rules must prevent ---')
 await seed()
@@ -169,7 +177,10 @@ console.log('\n--- Host migration at a full table ---')
 // batch used to write every player's `isHost` flag beside the game document.
 // At a big table that is a lot of lookups for one commit.
 for (const size of [3, 6, 9, 12]) {
-  await seed({ hostLastSeen: 'stale' })
+  await seed()
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await deleteDoc(doc(ctx.firestore(), 'games', PIN, 'players', HOST))
+  })
   const extras = []
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore()
@@ -181,7 +192,7 @@ for (const size of [3, 6, 9, 12]) {
       })
     }
   })
-  const everyone = [HOST, P2, P3, ...extras]
+  const everyone = [P2, P3, ...extras]
 
   // One client instance: a batch and its refs must come from the same one.
   const mine = as(P2)
@@ -191,7 +202,10 @@ for (const size of [3, 6, 9, 12]) {
   await check(size + ' players — promotion that writes every isHost flag',
     assertSucceeds(wide.commit()))
 
-  await seed({ hostLastSeen: 'stale' })
+  await seed()
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await deleteDoc(doc(ctx.firestore(), 'games', PIN, 'players', HOST))
+  })
   await check(size + ' players — promotion that writes only hostId',
     assertSucceeds(updateDoc(g(as(P2)), { hostId: P2 })))
 }

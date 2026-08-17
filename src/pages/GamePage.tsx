@@ -1023,16 +1023,24 @@ function Scoreboard({ players }: { players: Player[] }) {
 }
 
 const CONFETTI_COLORS = ['#8b5cf6', '#f43f5e', '#fbbf24', '#34d399', '#60a5fa']
+/** Gold, for the imposter's win — the one everybody should look up for. */
+const GOLD_CONFETTI = ['#fbbf24', '#f59e0b', '#fcd34d', '#eab308', '#fde68a']
 
-function Confetti() {
-  const pieces = Array.from({ length: 24 })
+function Confetti({
+  colors = CONFETTI_COLORS,
+  count = 24,
+}: {
+  colors?: readonly string[]
+  count?: number
+}) {
+  const pieces = Array.from({ length: count })
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 h-0 overflow-visible">
       {pieces.map((_, i) => {
         const left = (i * 37) % 100
         const delay = ((i * 13) % 40) / 100
         const duration = 1.2 + ((i * 7) % 8) / 10
-        const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length]
+        const color = colors[i % colors.length]
         return (
           <span
             key={i}
@@ -1098,22 +1106,46 @@ function RecapPhase({
   return (
     <div className="flex flex-1 flex-col pb-4">
       <div className="relative flex flex-col items-center gap-2 pt-2 text-center">
-        {cleanWin && !reducedMotion && <Confetti />}
-        <div
+        {/* The two endings are not the same size of moment.
+
+            Catching the imposter is the table doing its job — a tick and a
+            line. Getting away with it is one person fooling everybody at once,
+            which happens rarely and deserves the whole screen: gold, their
+            name on a plaque, and how long they held it. */}
+        {!crewWon && !reducedMotion && (
+          <Confetti colors={GOLD_CONFETTI} count={36} />
+        )}
+        <div className={'animate-pop-in ' + (crewWon ? 'text-5xl' : 'text-7xl')}>
+          {cleanWin ? '✅' : crewWon ? '🕵️' : '👑'}
+        </div>
+        <h1
           className={
-            'text-6xl ' + (crewWon ? 'animate-pop-in' : 'animate-ominous-shake')
+            'animate-pop-in font-black ' +
+            (crewWon ? 'text-2xl text-content' : 'text-4xl text-sunny-500')
           }
         >
-          {cleanWin ? '🎉' : crewWon ? '🕵️' : '😈'}
-        </div>
-        <h1 className="animate-pop-in text-3xl font-black text-content">
           {crewWon
             ? cleanWin
               ? t('game.crewWins')
               : t(caughtLine)
             : t('game.imposterWins')}
         </h1>
-        {imposter && (
+
+        {/* Won: the imposter's name is the headline, on a plaque of its own. */}
+        {!crewWon && imposter && (
+          <div className="animate-pop-in mt-1 rounded-2xl border-2 border-sunny-400 bg-sunny-400/10 px-6 py-3">
+            <div className="text-4xl">{imposter.character}</div>
+            <div dir="auto" className="text-xl font-black text-content">
+              {imposter.name}
+            </div>
+            <div className="mt-0.5 text-xs text-content-muted">
+              {t('game.imposterHonour', { count: round.imposterRounds ?? 0 })}
+            </div>
+          </div>
+        )}
+
+        {/* Caught: they are named in passing, which is all it is. */}
+        {crewWon && imposter && (
           <p className="text-content-muted">
             {t('game.theImposterWas')}{' '}
             <span dir="auto" className="font-black text-content">

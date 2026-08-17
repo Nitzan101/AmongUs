@@ -21,8 +21,9 @@ rules_version = '2';
 //     player removing themselves from the round when they leave. A player who
 //     opened developer tools could therefore tamper with round state. Everything
 //     outside `round` (settings, status, hostId) is still host-only.
-//   * Any player may take over hosting if the current host has gone quiet. This
-//     is what stops a game freezing when the host's phone dies.
+//   * Any player may take over hosting once the current host has LEFT the
+//     room, so a room is never left without one. Being quiet is not leaving:
+//     a host whose phone is locked keeps the room however long they are away.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -48,14 +49,12 @@ service cloud.firestore {
     }
 
     match /games/{pin} {
-      // The current host counts as "gone" if their heartbeat is stale or their
-      // player document has disappeared entirely.
+      // The current host counts as gone only when they are no longer in the
+      // room at all. Deliberately not a timeout: a host whose phone is locked,
+      // asleep or out of signal is still the host when they come back, however
+      // long that takes. Only leaving gives the room up.
       function hostAbsent() {
-        return !exists(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId))
-          || get(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId))
-               // In step with HOST_STALE_AFTER_MS in presence.ts. Long enough
-               // that a host whose phone locked in their pocket keeps the room.
-               .data.lastSeen < request.time - duration.value(150, 's');
+        return !exists(/databases/$(database)/documents/games/$(pin)/players/$(resource.data.hostId));
       }
 
       allow read: if signedIn();
@@ -67,7 +66,7 @@ service cloud.firestore {
         resource.data.hostId == request.auth.uid
         // A player may change round state (guessing, leaving mid-round).
         || (isPlayerIn(pin) && changedKeys().hasOnly(['round']))
-        // Host migration: take over only when the host has gone quiet.
+        // Host migration: only once the host is no longer in the room.
         || (isPlayerIn(pin)
             && changedKeys().hasOnly(['hostId'])
             && request.resource.data.hostId == request.auth.uid

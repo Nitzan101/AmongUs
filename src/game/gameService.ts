@@ -694,13 +694,19 @@ export async function leaveGame(
  */
 export async function closeGame(pin: string): Promise<void> {
   requireDb()
-  for (const sub of ['players', 'secrets', 'votes', 'clues', 'names']) {
-    // One awkward sub-collection must not strand the room.
-    //
-    // These ran unguarded, so a single refusal threw before the game document
-    // itself was deleted — leaving a room that every player was still sitting
-    // in, and a Close button that appeared to do nothing. Leftovers under a
-    // deleted game are invisible; a game nobody can close is not.
+  // The players must go, and they must go first.
+  //
+  // PINs are recycled: once the game document is deleted, that PIN is free for
+  // the next room. Player documents left underneath it are not invisible — the
+  // next room on that PIN inherits them, along with whatever scores they were
+  // carrying. So if this fails, the room stays and the Close button reports it
+  // rather than quietly leaving a haunted PIN behind.
+  await clearCollection(pin, 'players')
+
+  for (const sub of ['secrets', 'votes', 'clues', 'names']) {
+    // The rest are best-effort. Nothing reads them without a player list, so a
+    // refusal here is litter rather than a fault — and far better than a room
+    // that cannot be closed at all, which is what an unguarded throw gave.
     try {
       await clearCollection(pin, sub)
     } catch (e) {
