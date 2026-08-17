@@ -274,7 +274,7 @@
     "guessReviewCorrect": "Correct",
     "guessReviewWrong": "Wrong",
     "scoreboard": "Scoreboard",
-    "leading": "Leading right now",
+    "bestThisGame": "Took the most from this game",
     "theWordWas": "The word was",
     "guessRight": "The imposter guessed \"{{guess}}\" — correct!",
     "guessWrong": "The imposter guessed \"{{guess}}\" — wrong.",

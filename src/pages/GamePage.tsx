@@ -53,6 +53,7 @@ import type {
   Player,
   PlayerBadge,
   Round,
+  ScoreLineItem,
   SeatName,
   Secret,
   Vote,
@@ -967,17 +968,39 @@ function GuessPhase({
   )
 }
 
-function Scoreboard({ players }: { players: Player[] }) {
+function Scoreboard({
+  players,
+  lastGame,
+}: {
+  players: Player[]
+  /** This game's point lines, for the flame. */
+  lastGame?: Record<string, ScoreLineItem> | null
+}) {
   const { t } = useTranslation()
   const ranked = [...players].sort((a, b) => b.score - a.score)
-  // Live and derived only — never written anywhere. Whoever is on top right
-  // now gets a flame; the moment someone else passes them, it moves. A tie at
-  // the very top (including everyone tied at zero before the first game ends)
-  // shows nobody, since "leading by nothing" isn't leading.
-  const topScore = ranked[0]?.score ?? 0
-  const leaders =
-    topScore > 0 ? ranked.filter((p) => p.score === topScore) : []
-  const soleLeader = leaders.length === 1 ? leaders[0].id : null
+
+  /**
+   * Whoever took the most out of the game just played.
+   *
+   * The flame used to mark whoever was top of the table, which the number 1
+   * beside their name already said — it told you nothing you could not read
+   * one column to the left. What the ranking cannot show is who just had a
+   * good game, and that is the interesting thing on the screen: the imposter
+   * who walked off with six while everyone else took nothing.
+   *
+   * Shared bests show nobody. A crew win pays every one of them the same
+   * point, and a flame on all five faces is decoration rather than news.
+   */
+  const bestThisGame = (() => {
+    if (!lastGame) return null
+    const takings = players
+      .map((p) => ({ id: p.id, delta: lastGame[p.id]?.delta ?? 0 }))
+      .sort((a, b) => b.delta - a.delta)
+    const top = takings[0]
+    if (!top || top.delta <= 0) return null
+    if (takings[1] && takings[1].delta === top.delta) return null
+    return top.id
+  })()
 
   return (
     <div>
@@ -999,8 +1022,11 @@ function Scoreboard({ players }: { players: Player[] }) {
               className="flex flex-1 items-center gap-1.5 font-bold text-content"
             >
               {p.name}
-              {p.id === soleLeader && (
-                <span title={t('game.leading')} aria-label={t('game.leading')}>
+              {p.id === bestThisGame && (
+                <span
+                  title={t('game.bestThisGame')}
+                  aria-label={t('game.bestThisGame')}
+                >
                   🔥
                 </span>
               )}
@@ -1248,11 +1274,14 @@ function RecapPhase({
 function ResultPhase({
   pin,
   players,
+  lastGame,
   isHost,
   isGuest,
 }: {
   pin: string
   players: Player[]
+  /** The finished game's point lines, so the flame can mark who took the most. */
+  lastGame?: Record<string, ScoreLineItem> | null
   isHost: boolean
   isGuest: boolean
 }) {
@@ -1262,7 +1291,7 @@ function ResultPhase({
   return (
     <div className="flex flex-1 flex-col pb-4">
       <div className="flex-1">
-        <Scoreboard players={players} />
+        <Scoreboard players={players} lastGame={lastGame} />
 
         {/* The one moment a guest can see what an account would have kept:
             they've just finished a game that counted for nobody. A quiet line
@@ -1707,6 +1736,7 @@ export function GamePage() {
         <ResultPhase
           pin={pin}
           players={players}
+          lastGame={round.scoreBreakdown}
           isHost={isHost}
           isGuest={isGuest}
         />
