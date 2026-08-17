@@ -11,7 +11,7 @@ import {
   leaveGame,
   MAX_PLAYERS,
   MIN_PLAYERS,
-  reopenRoom,
+  finishRoom,
   startGame,
 } from '../game/gameService'
 import { LeaveGameDialog } from '../components/LeaveGameDialog'
@@ -126,18 +126,7 @@ export function LobbyPage() {
   if (game.status === 'finished') {
     return (
       <div className="flex flex-1 flex-col pb-4">
-        <Podium players={players} />
-        {isHost && (
-          <div className="mt-auto pt-8">
-            <Button
-              variant="ghost"
-              fullWidth
-              onClick={() => reopenRoom(pin).catch(report('reopen the room'))}
-            >
-              {t('podium.playAgain')}
-            </Button>
-          </div>
-        )}
+        <Podium players={players} pin={pin} isHost={isHost} uid={user?.uid} />
       </div>
     )
   }
@@ -337,6 +326,22 @@ export function LobbyPage() {
           <p className="mb-2 text-center text-sm text-content-muted">
             {t('lobby.hostNote')}
           </p>
+        )}
+        {/* Calling it a night belongs here, between games, where it is the
+            finish rather than an interruption. Hidden until there is something
+            to show: a podium of zeroes is not an ending. */}
+        {isHost && (game.gameNumber ?? 0) > 0 && (
+          <Button
+            variant="ghost"
+            fullWidth
+            className="mt-2"
+            onClick={() => {
+              if (!window.confirm(t('game.confirmFinishAll'))) return
+              finishRoom(pin).catch(report('finish the room'))
+            }}
+          >
+            🏆 {t('game.finishAll')}
+          </Button>
         )}
         <Button
           variant="ghost"

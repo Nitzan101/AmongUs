@@ -235,8 +235,6 @@
     "revealNow": "Reveal votes now",
     "revealNowHint": "Don't wait for stragglers — count what's in.",
     "managePlayers": "Manage players",
-    "endOptions": "End the game early",
-    "endOptionsHint": "Skip drops this round with no points. Finishing ends the evening on a podium.",
     "skipGame": "Skip this game",
     "confirmSkipGame": "Drop this game? Nobody scores, and it will not count for anyone.",
     "finishAll": "Finish for tonight",
@@ -552,6 +550,9 @@
   "podium": {
     "title": "Final standings",
     "subtitle": "That is the evening. Well played.",
-    "playAgain": "Play more games"
+    "playAgain": "Play more games",
+    "closeRoom": "Close the room",
+    "confirmClose": "Close the room for everyone? The scoreboard will be gone.",
+    "leave": "Back to the start"
   }
 }

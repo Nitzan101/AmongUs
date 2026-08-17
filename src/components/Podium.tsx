@@ -1,6 +1,11 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { colorForBadge } from '../game/badges'
+import { closeGame, leaveGame, reopenRoom } from '../game/gameService'
 import { rankPlayers } from '../game/podium'
+import { report } from '../lib/reportError'
+import { Button } from './ui/Button'
 import { BadgeIcon } from './BadgeIcon'
 import type { Player } from '../game/types'
 
@@ -14,14 +19,56 @@ const STEP_ORDER = [2, 1, 3]
  * How the evening ended: the top three, on steps, and everyone else beneath.
  *
  * Shown when the host calls it a night, and when the room runs out of unused
- * words. Deliberately a resting place rather than an exit — the room stays up
- * so people can look at it, argue about it, and take a photograph of it.
+ * words. A resting place — the room stays up so people can look at it, argue
+ * about it and photograph it — but **not a dead end**. It carries its own way
+ * out, because it was rendered from two screens and only one of them supplied
+ * any buttons: reach it from inside a game and there was nowhere at all to go.
+ * Owning the actions here is what stops those two copies drifting again.
  */
-export function Podium({ players }: { players: Player[] }) {
+export function Podium({
+  players,
+  pin,
+  isHost,
+  uid,
+}: {
+  players: Player[]
+  pin: string
+  isHost: boolean
+  /** Whoever is looking, so a guest can see themselves out. */
+  uid?: string
+}) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
   const ranked = rankPlayers(players)
   const top = ranked.slice(0, 3)
   const rest = ranked.slice(3)
+
+  function playAgain() {
+    setBusy(true)
+    reopenRoom(pin).catch((e) => {
+      setBusy(false)
+      report('reopen the room')(e)
+    })
+  }
+
+  function closeForEveryone() {
+    if (!window.confirm(t('podium.confirmClose'))) return
+    setBusy(true)
+    closeGame(pin)
+      .then(() => navigate('/'))
+      .catch((e) => {
+        setBusy(false)
+        report('close the room')(e)
+      })
+  }
+
+  function leave() {
+    setBusy(true)
+    const done = () => navigate('/')
+    if (!uid) return done()
+    leaveGame(pin, uid).then(done).catch(done)
+  }
 
   return (
     <div className="flex flex-col items-center">
@@ -98,6 +145,28 @@ export function Podium({ players }: { players: Player[] }) {
           ))}
         </ul>
       )}
+
+      <div className="mt-8 flex w-full flex-col gap-2">
+        {isHost ? (
+          <>
+            <Button size="lg" fullWidth disabled={busy} onClick={playAgain}>
+              {t('podium.playAgain')}
+            </Button>
+            <Button
+              variant="accent"
+              fullWidth
+              disabled={busy}
+              onClick={closeForEveryone}
+            >
+              {t('podium.closeRoom')}
+            </Button>
+          </>
+        ) : (
+          <Button variant="ghost" fullWidth disabled={busy} onClick={leave}>
+            {t('podium.leave')}
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

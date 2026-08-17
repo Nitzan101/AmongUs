@@ -20,6 +20,7 @@ import {
   resolveGuessReview,
   resolveVote,
   setPlayerBadge,
+  skipGame,
   skipGuess,
   applyMyScore,
   endIfTooFewAlive,
@@ -31,7 +32,6 @@ import {
 import { useWordSetById } from '../game/wordSets'
 import { GameClosedScreen } from '../components/GameClosedScreen'
 import { GameHeaderBar } from '../components/GameHeaderBar'
-import { HostGameControls } from '../components/HostGameControls'
 import { HostPlayerManager } from '../components/HostPlayerManager'
 import { Podium } from '../components/Podium'
 import { useGameClosed } from '../game/useGameClosed'
@@ -1615,7 +1615,7 @@ export function GamePage() {
   if (!loading && game?.status === 'finished') {
     return (
       <div className="flex flex-1 flex-col pb-4">
-        <Podium players={players} />
+        <Podium players={players} pin={pin} isHost={isHost} uid={uid} />
       </div>
     )
   }
@@ -1725,7 +1725,23 @@ export function GamePage() {
       {/* Available in every phase: the host shouldn't have to wait for the
           round to end to remove a player whose phone died. */}
       {isHost && <HostPlayerManager pin={pin} players={players} uid={uid} />}
-      {isHost && <HostGameControls pin={pin} />}
+
+      {/* Only ever the skip while a game is running. Ending the evening is a
+          lobby decision — it happens *between* games, not by interrupting one,
+          and offering both here made the pair read as one menu of ways to
+          stop. */}
+      {isHost && (
+        <button
+          type="button"
+          onClick={() => {
+            if (!window.confirm(t('game.confirmSkipGame'))) return
+            skipGame(pin).catch(report('skip this game'))
+          }}
+          className="mt-3 py-1 text-center text-sm text-content-muted hover:text-content"
+        >
+          ⏭️ {t('game.skipGame')}
+        </button>
+      )}
 
       <button
         type="button"
