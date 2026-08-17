@@ -20,6 +20,12 @@ export interface OptionSpec<K extends keyof GameOptions> {
     titleKey: string
     /** Omitted where the title says everything (the language names). */
     descKey?: string
+    /**
+     * Hidden while another choice rules this one out — see `hard` below.
+     * A choice that cannot work should not be offered and then quietly
+     * overridden; it should not be there.
+     */
+    unavailable?: (options: GameOptions) => boolean
   }[]
   /** Hidden while the host is dealing from a custom set. */
   builtInBankOnly?: boolean
@@ -100,6 +106,12 @@ const DIFFICULTY_SPEC: OptionSpec<'difficulty'> = {
       icon: '🔥',
       titleKey: 'create.difficultyHard',
       descKey: 'create.difficultyHardDesc',
+      // Hard hands the imposter no word. Hidden role hands them no *role*.
+      // Together they hand them nothing at all — an empty card, which would
+      // give the game away more loudly than any word. So it disappears once
+      // the imposter isn't being told, which is why that question is asked
+      // first.
+      unavailable: (o) => o.imposterAware === false,
     },
   ],
 }
@@ -181,11 +193,40 @@ export const OPTION_SPECS: readonly OptionSpec<keyof GameOptions>[] = [
   MODE_SPEC,
   TURN_DISPLAY_SPEC,
   WORD_LANGUAGE_SPEC,
-  DIFFICULTY_SPEC,
+  // Asked before difficulty, because it decides which difficulties exist:
+  // telling the imposter nothing rules out giving them no word as well.
   AWARENESS_SPEC,
+  DIFFICULTY_SPEC,
   SCORING_SPEC,
   GUESS_SPEC,
 ] as unknown as readonly OptionSpec<keyof GameOptions>[]
+
+/** The values of one option that are actually offerable right now. */
+export function availableValues(
+  spec: OptionSpec<keyof GameOptions>,
+  options: GameOptions,
+) {
+  return spec.values.filter((v) => !v.unavailable?.(options))
+}
+
+/**
+ * Fold in whatever a choice forces on another option.
+ *
+ * Turning the imposter's knowledge off while the room is set to Hard would
+ * leave a combination the game cannot deal, so the difficulty comes down with
+ * it. Done here rather than at the tap, so every screen that changes a setting
+ * gets the same correction.
+ */
+export function withDependentOptions(
+  current: GameOptions,
+  patch: Partial<GameOptions>,
+): Partial<GameOptions> {
+  const next = { ...current, ...patch }
+  if (next.imposterAware === false && next.difficulty === 'hard') {
+    return { ...patch, difficulty: 'medium' }
+  }
+  return patch
+}
 
 /** Find the chosen value's spec entry, for rendering a summary or a label. */
 export function selectedValue(
@@ -231,14 +272,18 @@ export function optionsFromProfile(
 ): GameOptions {
   const base = defaultGameOptions(uiLanguage)
   if (!saved) return base
+  const aware = saved.imposterAware ?? base.imposterAware
+  const difficulty = saved.difficulty ?? base.difficulty
   return {
     ...base,
     language: saved.language ?? base.language,
     mode: saved.mode ?? base.mode,
-    difficulty: saved.difficulty ?? base.difficulty,
+    // A profile saved before hidden-role and hard were made exclusive can
+    // still hold both; the room must not start on a deal that cannot happen.
+    difficulty: !aware && difficulty === 'hard' ? 'medium' : difficulty,
     scoring: saved.scoring ?? base.scoring,
     guess: saved.guess ?? base.guess,
-    imposterAware: saved.imposterAware ?? base.imposterAware,
+    imposterAware: aware,
     turnCircle: saved.turnCircle ?? base.turnCircle,
   }
 }

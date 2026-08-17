@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { OptionCard } from './ui/Card'
-import { OPTION_SPECS, selectedValue, toSavedOptions } from '../game/gameOptions'
+import {
+  availableValues,
+  OPTION_SPECS,
+  selectedValue,
+  toSavedOptions,
+  withDependentOptions,
+} from '../game/gameOptions'
 import { updateGameOptions } from '../game/gameService'
 import { saveProfile } from '../game/profile'
 import type { Game, GameOptions } from '../game/types'
@@ -80,8 +86,10 @@ export function GameSettingsPanel({
     return () => clearTimeout(timer)
   }, [changed])
 
-  async function choose(patch: Partial<GameOptions>) {
+  async function choose(chosen: Partial<GameOptions>) {
     if (!editable) return
+    // One tap can rule another setting out — see `withDependentOptions`.
+    const patch = withDependentOptions(game, chosen)
     await updateGameOptions(pin, patch)
     // Remember it for the host's next room, so this screen is a one-off.
     await saveProfile(uid, {
@@ -225,7 +233,7 @@ export function GameSettingsPanel({
             <h3 className="text-xs font-bold uppercase tracking-wide text-content-muted">
               {t(spec.labelKey)}
             </h3>
-            {spec.values.map((v) => (
+            {availableValues(spec, game).map((v) => (
               <OptionCard
                 key={String(v.value)}
                 icon={v.icon}
