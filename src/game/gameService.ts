@@ -1576,12 +1576,12 @@ export async function reopenRoom(pin: string): Promise<void> {
     })
     await batch.commit()
   }
-  await updateDoc(gameRef(pin), {
-    status: 'lobby',
-    round: null,
-    usedWords: [],
-    gameNumber: 0,
-  })
+  // `gameNumber` deliberately keeps counting. It is half of the key that
+  // says "this game has already been paid for and already been recorded", so
+  // restarting it at zero would make the first game of the new evening collide
+  // with the first game of the old one — and a room finished after a single
+  // game would never record its next one at all.
+  await updateDoc(gameRef(pin), { status: 'lobby', round: null, usedWords: [] })
 }
 
 /** Return the room to the lobby for another game (host). */

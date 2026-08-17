@@ -89,7 +89,7 @@ function daysSince(s: Stats, nowMs: number): number {
  *   purpose: no threshold on "games played" or "times you were handed the
  *   imposter card" can ever be evidence of skill, so pretending otherwise by
  *   adding a gold rung would cheapen every gold that *is* earned.
- * - **skill** — the four core ladders, each topped by a streak.
+ * - **skill** — the core ladders, each topped by a streak.
  * - **feats** — rarer single moments. Most also top out in streaks; the three
  *   that don't are single-game peaks (`bestGame`, `marathon`) or depend on
  *   being caught first (`lastLaugh`), where a run would measure the crew.
@@ -162,6 +162,17 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [15, 30],
     metric: (s) => (s.played > 0 && s.asImposter / s.played > 0.4 ? s.played : 0),
   },
+  // Moved off the skill shelf. Only one player goes out per round and the
+  // imposter is usually caught on the first vote, so you survive around 94% of
+  // games — a run of them measures attendance, not judgement. As a count it is
+  // an honest record of having played a lot without being unlucky.
+  {
+    key: 'survivor',
+    icon: '🛡️',
+    group: 'playing',
+    thresholds: [25, 100],
+    metric: (s) => s.survived,
+  },
 
   // ---- Skill: the four core ladders, each topped by a run. ----
   {
@@ -171,10 +182,12 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [10, 50],
     metric: (s) => s.won,
     streakKey: 'wins',
-    // Six and ten, not three and five. The crew win most games at most tables,
-    // so a five-win run was an ordinary first evening — which is how a
-    // platinum came home on the very first night anyone played.
-    streakThresholds: [6, 10],
+    // You are on the winning side about 73% of the time at a nine-player
+    // table, simply by usually being crew. A ten-win run is 72% likely across
+    // a hundred games — near certain, not a feat. Sixteen and twenty-two put
+    // gold at roughly a one-in-three chance over two hundred games and
+    // platinum at one in twenty.
+    streakThresholds: [16, 22],
   },
   {
     key: 'imposterWins',
@@ -183,18 +196,10 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [5, 15],
     metric: (s) => s.imposterWins,
     streakKey: 'imposterWins',
-    streakThresholds: [4, 7],
-  },
-  {
-    key: 'survivor',
-    icon: '🛡️',
-    group: 'skill',
-    // Only one player goes out per round, so surviving is the common case and
-    // has to be counted in much bigger numbers to mean anything.
-    thresholds: [25, 75],
-    metric: (s) => s.survived,
-    streakKey: 'survivor',
-    streakThresholds: [8, 14],
+    // The other direction: this only advances on the games you hold the card,
+    // which is one in nine, and you get away with it a fifth of the time. Seven
+    // in a row was not hard, it was impossible.
+    streakThresholds: [3, 4],
   },
   {
     key: 'detective',
@@ -203,7 +208,7 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [20, 60],
     metric: (s) => s.detectiveGames,
     streakKey: 'detective',
-    streakThresholds: [6, 10],
+    streakThresholds: [18, 24],
   },
 
   // ---- Feats: rarer moments. ----
@@ -217,7 +222,7 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [10, 35],
     metric: (s) => s.instantReads,
     streakKey: 'instantRead',
-    streakThresholds: [6, 10],
+    streakThresholds: [20, 28],
   },
   {
     key: 'cleanSweep',
@@ -226,7 +231,9 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [10, 35],
     metric: (s) => s.cleanSweeps,
     streakKey: 'cleanSweep',
-    streakThresholds: [6, 10],
+    // Down, not up: a unanimous vote lands about a third of the time, so ten
+    // in a row was a rung nobody would ever stand on.
+    streakThresholds: [6, 8],
   },
   {
     key: 'houdini',
@@ -235,7 +242,7 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [8, 25],
     metric: (s) => s.houdinis,
     streakKey: 'houdini',
-    streakThresholds: [4, 7],
+    streakThresholds: [3, 5],
   },
   {
     key: 'invisible',
@@ -244,7 +251,7 @@ export const TRACKS: TrackSpec[] = [
     thresholds: [12, 40],
     metric: (s) => s.invisibles,
     streakKey: 'invisible',
-    streakThresholds: [5, 9],
+    streakThresholds: [7, 9],
   },
   // No streak: earning this at all needs the crew to catch you first, which
   // is their decision rather than yours, so a run of them would mostly
