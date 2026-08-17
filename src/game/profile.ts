@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import type { Stats } from './stats'
+import { refreshBadge } from './badges'
+import { normalizeStats, type Stats } from './stats'
 import type { GameOptions, PlayerBadge } from './types'
 
 /**
@@ -53,10 +54,27 @@ export type SavedGameOptions = Pick<
   | 'language'
 >
 
+/**
+ * Load a profile, with anything the rules have outgrown brought up to date.
+ *
+ * The single place every screen reads an account from, which is why the
+ * correction lives here: stats measured on an older scoring scale, and a
+ * displayed badge whose tier the account no longer holds. Neither is written
+ * back — reading is not the moment to write — but the next finished game
+ * persists the corrected totals, and the badge is right on every screen from
+ * the first render.
+ */
 export async function getProfile(uid: string): Promise<Profile | null> {
   if (!db) return null
   const snap = await getDoc(doc(db, 'users', uid))
-  return snap.exists() ? (snap.data() as Profile) : null
+  if (!snap.exists()) return null
+  const stored = snap.data() as Profile
+  const stats = normalizeStats(stored.stats)
+  return {
+    ...stored,
+    stats,
+    displayedBadge: refreshBadge(stored.displayedBadge, stats),
+  }
 }
 
 export async function saveProfile(

@@ -69,6 +69,13 @@ export interface Stats {
   /** The best each run has ever reached — what the gold and platinum rungs read. */
   bestStreaks?: Record<string, number>
 
+  /**
+   * Bumped when a stored number starts meaning something different, so it can
+   * be corrected rather than quietly compared against thresholds it was never
+   * measured for. See `STATS_VERSION`.
+   */
+  version?: number
+
   firstPlayedAt?: Timestamp | null
   /**
    * `pin:gameNumber` of the last game counted. Reopening a finished game — a
@@ -77,6 +84,21 @@ export interface Stats {
    */
   lastGame?: string
 }
+
+/**
+ * What the stored numbers mean.
+ *
+ * 2 — the scoring was rebalanced. A crew member's best possible game went from
+ * four points to one, and the imposter's from about ten to thirty, so every
+ * `bestGamePoints` recorded before it was measured on a scale that no longer
+ * exists. Left alone, an old four-point crew game would have sat there as a
+ * "best game" nobody could match under the new rules.
+ *
+ * The counters themselves need no correction: games played is games played,
+ * and the badge tiers are computed live, so a threshold that moved simply
+ * moves everybody's tier with it.
+ */
+export const STATS_VERSION = 2
 
 export const EMPTY_STATS: Stats = {
   played: 0,
@@ -100,6 +122,7 @@ export const EMPTY_STATS: Stats = {
   triedVariants: [],
   streaks: {},
   bestStreaks: {},
+  version: STATS_VERSION,
 }
 
 /**
@@ -112,7 +135,17 @@ export const EMPTY_STATS: Stats = {
  * system passes through here first.
  */
 export function normalizeStats(stats: Stats | undefined | null): Stats {
-  return { ...EMPTY_STATS, ...(stats ?? {}) }
+  const merged = { ...EMPTY_STATS, ...(stats ?? {}) }
+  // Read the version off what was *stored*, never off the merged object: the
+  // defaults carry the current version, so merging first would stamp every
+  // old profile as up to date and quietly skip the correction below.
+  // Nothing stored at all is a new account, which needs no correcting.
+  const storedVersion = stats ? (stats.version ?? 1) : STATS_VERSION
+  if (storedVersion >= STATS_VERSION) return merged
+  // Recorded before the rebalance, so it counts points that cannot be scored
+  // any more. Starting it again is fairer than leaving a high-water mark set
+  // by different rules.
+  return { ...merged, bestGamePoints: 0, version: STATS_VERSION }
 }
 
 /**
@@ -248,6 +281,7 @@ export function applyResult(before: Stats, result: GameResult): Stats {
     triedVariants: [...tags].sort(),
     streaks,
     bestStreaks,
+    version: STATS_VERSION,
     firstPlayedAt: before.firstPlayedAt ?? null,
     lastGame: `${result.pin}:${result.gameNumber}`,
   }

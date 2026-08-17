@@ -382,6 +382,27 @@ export function collectionProgress(stats: Stats, nowMs: number = Date.now()) {
   return { have, total, progress: total === 0 ? 0 : have / total }
 }
 
+/**
+ * A snapshotted badge brought back in line with what the account now holds.
+ *
+ * `displayedBadge` is a copy — icon and tier and all — because other players
+ * cannot read your profile to look it up. Copies go stale: raise a threshold
+ * and somebody keeps wearing a platinum they would no longer be given. This
+ * re-reads the tier from the live totals, hands back the same badge one rung
+ * lower where that is what they now hold, and nothing at all where the track
+ * has dropped off the bottom.
+ */
+export function refreshBadge(
+  badge: PlayerBadge | null | undefined,
+  stats: Stats,
+  nowMs: number = Date.now(),
+): PlayerBadge | null {
+  if (!badge) return null
+  const track = computeTieredBadges(stats, nowMs).find((t) => t.key === badge.key)
+  if (!track?.tierName) return null
+  return track.tierName === badge.tier ? badge : { ...badge, tier: track.tierName }
+}
+
 /** A track that just moved up a tier, for the announcement. */
 export interface BadgeDelta {
   key: string
