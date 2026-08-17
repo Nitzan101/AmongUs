@@ -14,6 +14,7 @@ import {
   forgetGame,
   GameError,
   leaveGame,
+  finishRoom,
   MIN_PLAYERS,
   openVoting,
   resolveGuess,
@@ -1340,6 +1341,20 @@ function ResultPhase({
             >
               {t('game.backToLobby')}
             </Button>
+            {/* The other thing to do when a game has just ended: stop. This is
+                the moment the decision is actually taken — nobody calls the
+                evening while a round is still being played. */}
+            <Button
+              variant="ghost"
+              fullWidth
+              className="mt-2"
+              onClick={() => {
+                if (!window.confirm(t('game.confirmFinishAll'))) return
+                finishRoom(pin).catch(report('finish the room'))
+              }}
+            >
+              🏆 {t('game.finishAll')}
+            </Button>
           </>
         ) : (
           <p className="text-center text-sm text-content-muted">
@@ -1756,11 +1771,11 @@ export function GamePage() {
           round to end to remove a player whose phone died. */}
       {isHost && <HostPlayerManager pin={pin} players={players} uid={uid} />}
 
-      {/* Only ever the skip while a game is running. Ending the evening is a
-          lobby decision — it happens *between* games, not by interrupting one,
-          and offering both here made the pair read as one menu of ways to
-          stop. */}
-      {isHost && (
+      {/* Only while a game is actually being played. Once the points are up
+          there is nothing left to skip, and offering it on the scoreboard read
+          as a way to throw away the game everyone had just finished. Ending
+          the evening is offered there instead. */}
+      {isHost && round.phase !== 'recap' && round.phase !== 'result' && (
         <button
           type="button"
           onClick={() => {
