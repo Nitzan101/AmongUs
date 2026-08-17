@@ -1549,16 +1549,29 @@ export function GamePage() {
   // Once a game is over, pay yourself the points it awarded. Each device does
   // its own, because writing another player's document is host-only and
   // finalising is no longer the host's job alone.
+  // Guarded twice over. `applyMyScore` is a transaction, so a second attempt
+  // cannot pay out again — but this effect re-runs on *every* snapshot of a
+  // finished round, and there is no reason to keep asking. Mirrors the stats
+  // effect above, which has always worked this way.
+  const paidRef = useRef<string | null>(null)
   useEffect(() => {
     if (!me || !user || !game || !round) return
     if (round.phase !== 'recap' && round.phase !== 'result') return
     const line = round.scoreBreakdown?.[user.uid]
     if (!line) return
+
+    const key = `${pin}:${game.gameNumber ?? 1}`
+    if (paidRef.current === key) return
+    paidRef.current = key
+
     const iWon =
       round.outcome ===
       (round.imposterId === user.uid ? 'imposter-wins' : 'crew-wins')
     applyMyScore(pin, user.uid, game.gameNumber ?? 1, line.delta, iWon).catch(
-      (e) => console.error('applyMyScore failed', e),
+      (e) => {
+        paidRef.current = null
+        console.error('applyMyScore failed', e)
+      },
     )
   }, [me, user, game, round, pin])
 

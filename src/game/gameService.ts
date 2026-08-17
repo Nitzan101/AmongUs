@@ -4,8 +4,8 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   onSnapshot,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -1490,9 +1490,15 @@ async function finalizeGame(
  *
  * The counterpart to finalising writing just the round: everyone applies their
  * own line from `scoreBreakdown`, which each player is allowed to do, instead
- * of the host writing everybody's. `scoredGame` makes it idempotent, since
- * every device sees the finished round repeatedly and a reload must not pay
- * out twice.
+ * of the host writing everybody's.
+ *
+ * **In a transaction, because the guard was losing a race with itself.** Every
+ * snapshot of a finished round re-runs the caller, so two attempts could both
+ * read the document before either had written `scoredGame` to it — and both
+ * would then pay out. That is how a game worth 9 arrived on the scoreboard as
+ * 18. Reading and writing in one transaction makes the second attempt see the
+ * first one's mark and stop, whether it comes from a re-render, a reload, or
+ * another tab.
  */
 export async function applyMyScore(
   pin: string,
@@ -1502,16 +1508,19 @@ export async function applyMyScore(
   /** Whether this player's side won, counted for the podium's tie-break. */
   won = false,
 ): Promise<void> {
-  requireDb()
+  const { db } = requireDb()
   const key = `${pin}:${gameNumber}`
   const ref = playerRef(pin, uid)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) return
-  if ((snap.data() as Player).scoredGame === key) return
-  await updateDoc(ref, {
-    scoredGame: key,
-    ...(delta ? { score: increment(delta) } : {}),
-    ...(won ? { wins: increment(1) } : {}),
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists()) return
+    const player = snap.data() as Player
+    if (player.scoredGame === key) return
+    tx.update(ref, {
+      scoredGame: key,
+      ...(delta ? { score: (player.score ?? 0) + delta } : {}),
+      ...(won ? { wins: (player.wins ?? 0) + 1 } : {}),
+    })
   })
 }
 
